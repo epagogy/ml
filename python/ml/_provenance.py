@@ -43,8 +43,10 @@ def _fingerprint(df: pd.DataFrame) -> str:
     sampling for large datasets (>100K rows).
 
     Returns a hex string (first 16 chars of SHA-256), or None if
-    unhashable (e.g., list-valued columns).
+    unhashable (e.g., list-valued columns) or not a DataFrame.
     """
+    if not isinstance(df, pd.DataFrame):
+        return None
     n = len(df)
     if n == 0:
         col_sig = b"".join(
@@ -89,6 +91,7 @@ class PartitionRegistry:
         self._store: OrderedDict[str, str] = OrderedDict()      # fp → role
         self._lineage: dict[str, str] = {}                       # fp → split_id
         self._splits: dict[str, dict] = {}                       # split_id → metadata
+        self._assessed: set[str] = set()                         # fp → assessed test partitions
 
     def register(self, df: pd.DataFrame, role: str, split_id: str) -> str | None:
         """Register a partition. Returns its fingerprint, or None if unhashable."""
@@ -126,12 +129,27 @@ class PartitionRegistry:
                 **metadata,
             }
 
+    def mark_assessed(self, df: pd.DataFrame) -> None:
+        """Mark a test partition's fingerprint as assessed (spent)."""
+        fp = _fingerprint(df)
+        if fp is not None:
+            with self._lock:
+                self._assessed.add(fp)
+
+    def is_assessed(self, df: pd.DataFrame) -> bool:
+        """Check if a test partition has already been assessed by any model."""
+        fp = _fingerprint(df)
+        if fp is None:
+            return False
+        return fp in self._assessed
+
     def clear(self):
         """Clear the registry (e.g., between experiments)."""
         with self._lock:
             self._store.clear()
             self._lineage.clear()
             self._splits.clear()
+            self._assessed.clear()
 
     def __len__(self):
         return len(self._store)
@@ -418,7 +436,8 @@ def guard_evaluate(data: pd.DataFrame) -> None:
 
 
 def guard_assess(data: pd.DataFrame) -> None:
-    """Layer 1 guard for assess(): require split provenance, reject non-test data."""
+    """Layer 1 guard for assess(): require split provenance, reject non-test data,
+    reject already-assessed test holdouts (per-holdout enforcement)."""
     role, fingerprintable = _identify_with_reason(data)
     if not fingerprintable:
         return  # can't judge — pass silently
@@ -434,6 +453,14 @@ def guard_assess(data: pd.DataFrame) -> None:
             f"assess() received data identified as '{role}' partition. "
             "assess() requires test data (s.test). "
             "For validation iterations, use ml.evaluate(model, s.valid)."
+        )
+    elif _registry.is_assessed(data):
+        _guard_action(
+            "assess() called on a test holdout that has already been assessed. "
+            "The test set gets one assessment per holdout, regardless of which model. "
+            "Use ml.evaluate(model, s.valid) for model comparison. "
+            "To get a fresh holdout: s = ml.split(df, target, seed=NEW_SEED). "
+            "To override: ml.config(guards='off')"
         )
 
 

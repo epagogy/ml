@@ -1,4 +1,4 @@
-"""Edge case guards and tests — Chain 10 (Edge Case Fortress).
+"""Edge case guards and tests.
 
 Tests for: empty DataFrames, target missing messages, constant features,
 duplicate columns, infinite values, tune task mismatch, save/load extensions,

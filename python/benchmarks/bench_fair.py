@@ -12,7 +12,7 @@ Usage:
     python benchmarks/bench_fair.py --server      # + 100K synthetic
     python benchmarks/bench_fair.py --json --output results.json
 
-Audited by 3 parallel auditors. All numbers include version + hardware info.
+All numbers include version + hardware info.
 """
 
 from __future__ import annotations

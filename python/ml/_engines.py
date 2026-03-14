@@ -900,10 +900,14 @@ def _create_histgradient(task: str, seed: int, *, engine: str = "auto", **kwargs
         HistGradientBoostingClassifier,
         HistGradientBoostingRegressor,
     )
+    # Filter out Rust/XGBoost-specific kwargs that sklearn doesn't accept
+    _rust_only = {"reg_lambda", "gamma", "colsample_bytree", "min_child_weight",
+                  "n_iter_no_change", "validation_fraction", "lambda"}
+    sk_kwargs = {k: v for k, v in kwargs.items() if k not in _rust_only}
     if task == "classification":
-        return HistGradientBoostingClassifier(random_state=seed, **kwargs)
+        return HistGradientBoostingClassifier(random_state=seed, **sk_kwargs)
     else:
-        return HistGradientBoostingRegressor(random_state=seed, **kwargs)
+        return HistGradientBoostingRegressor(random_state=seed, **sk_kwargs)
 
 
 def _create_decision_tree(task: str, seed: int, *, engine: str = "auto", **kwargs) -> Any:

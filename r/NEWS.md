@@ -1,3 +1,10 @@
+# ml 1.1.2
+
+## Fixed
+* Per-holdout assess enforcement: `ml_assess()` now rejects a second call on
+  the same test partition regardless of which model calls it. The provenance
+  registry tracks spent holdouts via content-addressed fingerprinting.
+
 # ml 0.1.0
 
 Initial CRAN release.

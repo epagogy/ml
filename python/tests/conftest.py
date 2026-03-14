@@ -53,6 +53,9 @@ def _gc_after_test():
     leaks into subsequent test files via the global _CONFIG dict.
     """
     ml.config(guards="off")
+    # Clear assessed set — per-holdout tracking must not leak between tests
+    from ml._provenance import _registry
+    _registry._assessed.clear()
     yield
     # Close matplotlib figures (Agg buffer accumulation across tests)
     try:

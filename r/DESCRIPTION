@@ -1,6 +1,6 @@
 Package: ml
 Title: Supervised Learning with Mandatory Splits and Seeds
-Version: 1.1.1
+Version: 1.1.2
 Authors@R: person("Simon", "Roth", email = "simon@epagogy.ai", role = c("aut", "cre"))
 Author: Simon Roth [aut, cre]
 Maintainer: Simon Roth <simon@epagogy.ai>

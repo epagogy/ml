@@ -15,10 +15,6 @@ from .evaluate import evaluate
 if TYPE_CHECKING:
     from ._types import Metrics, Model
 
-# Module-level tracking: detect multi-model assessment on same test data.
-# Key = (n_rows, n_cols, first_value_hash), Value = count of assess calls.
-# Addresses known design gap: assess counter is per-model, not per-test-set.
-_test_set_tracker: dict[tuple, int] = {}
 
 
 def assess(
@@ -121,23 +117,10 @@ def assess(
             stacklevel=2,
         )
 
-    # Cross-model test-set tracking: detect cherry-picking across seeds.
-    # Seed inflation scales as log(K) without bound (Roth 2026a, Exp AP).
-    # Reporting best-of-K seeds inflates AUC by 0.003*log(K) on average.
-    try:
-        _fingerprint = (len(test), len(test.columns), hash(test.iloc[0].values.tobytes()))
-    except Exception:
-        _fingerprint = (len(test), len(test.columns))
-    _test_set_tracker[_fingerprint] = _test_set_tracker.get(_fingerprint, 0) + 1
-    if _test_set_tracker[_fingerprint] > 1:
-        n_assessments = _test_set_tracker[_fingerprint]
-        warnings.warn(
-            f"assess() called {n_assessments} times on same test set (different models). "
-            f"Seed cherry-picking inflates AUC by ~{0.003 * __import__('math').log(n_assessments):.4f} "
-            "on average (Roth 2026a). Report mean across seeds, not best.",
-            UserWarning,
-            stacklevel=2,
-        )
+    # Mark test holdout as assessed in provenance registry (per-holdout enforcement).
+    # guard_assess() already rejected if this holdout was previously assessed.
+    from ._provenance import _registry
+    _registry.mark_assessed(test)
 
     # Use evaluate() for metrics (same logic, different intent)
     result = evaluate(model, test, metrics=metrics, intervals=intervals, _guard=False)

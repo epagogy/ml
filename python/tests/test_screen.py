@@ -167,7 +167,7 @@ def test_screen_uses_parallel(small_classification_data):
 # ── A13: GPU detection ────────────────────────────────────────────────────────
 
 
-# ── Validation Fortress ──────────────────────────────────────────────
+# ── Validation ──────────────────────────────────────────────────────
 
 
 def test_screen_timing_column(small_classification_data):

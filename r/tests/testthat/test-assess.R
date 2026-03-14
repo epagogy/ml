@@ -127,3 +127,42 @@ test_that("assess allows unsplit data with guards off", {
   result <- ml_assess(model, test = unsplit)
   expect_s3_class(result, "ml_evidence")
 })
+
+# ── Per-holdout enforcement ──
+
+test_that("assess rejects second model on same test holdout", {
+  .clear_registry()
+  ml_config(guards = "strict")
+  withr::defer(ml_config(guards = "off"))
+  s      <- iris_split()
+  model1 <- ml_fit(s$train, "Species", algorithm = "logistic", seed = 42L)
+  model2 <- ml_fit(s$train, "Species", algorithm = "decision_tree", seed = 42L)
+  ml_assess(model1, test = s$test)  # first model: OK
+  expect_error(
+    ml_assess(model2, test = s$test),
+    class = "partition_error"
+  )
+})
+
+test_that("fresh split test accepted after previous holdout assessed", {
+  .clear_registry()
+  ml_config(guards = "strict")
+  withr::defer(ml_config(guards = "off"))
+  s1     <- iris_split(seed = 42L)
+  s2     <- iris_split(seed = 99L)
+  model1 <- ml_fit(s1$train, "Species", algorithm = "logistic", seed = 42L)
+  model2 <- ml_fit(s2$train, "Species", algorithm = "logistic", seed = 99L)
+  ml_assess(model1, test = s1$test)
+  result <- ml_assess(model2, test = s2$test)  # different holdout: OK
+  expect_s3_class(result, "ml_evidence")
+})
+
+test_that("per-holdout bypassed by guards off", {
+  ml_config(guards = "off")
+  s      <- iris_split()
+  model1 <- ml_fit(s$train, "Species", algorithm = "logistic", seed = 42L)
+  model2 <- ml_fit(s$train, "Species", algorithm = "decision_tree", seed = 42L)
+  ml_assess(model1, test = s$test)
+  result <- ml_assess(model2, test = s$test)  # guards off: no error
+  expect_s3_class(result, "ml_evidence")
+})

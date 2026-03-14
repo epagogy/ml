@@ -2,6 +2,13 @@
 
 All notable changes to `mlw` will be documented in this file.
 
+## [1.1.2] - 2026-03-14
+
+### Fixed
+- Per-holdout assess enforcement: `assess()` now rejects a second call on the same test partition regardless of which model calls it (provenance registry tracks spent holdouts)
+- `histgradient` sklearn fallback no longer passes Rust-only kwargs (`reg_lambda`, `gamma`, etc.)
+- `_fingerprint()` handles non-DataFrame inputs gracefully (returns None instead of crashing)
+
 ## [1.0.0] - 2026-03-07
 
 First stable release. The Hastie workflow in code.

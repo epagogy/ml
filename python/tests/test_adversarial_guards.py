@@ -364,22 +364,19 @@ class TestPandasOperations:
 class TestAssessOnceBypass:
     """Can assess-once be bypassed via serialization?"""
 
-    def test_save_load_resets_assess_counter(self, split_data, tmp_path):
-        """Save/load creates a fresh model — assess counter resets.
-        This IS a known gap documented in the paper."""
+    def test_save_load_cannot_bypass_holdout_guard(self, split_data, tmp_path):
+        """Save/load resets per-model counter but per-holdout guard still blocks.
+        The provenance registry remembers the test holdout was already assessed."""
+        ml.config(guards="strict")
         model = ml.fit(data=split_data.train, target="target", seed=42)
         ml.assess(model=model, test=split_data.test)
-        # Second assess should fail
-        with pytest.raises(ml.ModelError, match="called 2 times"):
-            ml.assess(model=model, test=split_data.test)
-        # But save/load resets it
+        # Save/load resets the model's _assess_count...
         path = tmp_path / "model.mlw"
         ml.save(model, str(path))
         loaded = ml.load(str(path))
-        # This will succeed — known gap
-        # The loaded model's test data is still registered from the same session
-        verdict = ml.assess(model=loaded, test=split_data.test)
-        assert verdict is not None  # Known gap — documenting, not fixing
+        # ...but the per-holdout guard catches the re-assessment
+        with pytest.raises(ml.PartitionError, match="already been assessed"):
+            ml.assess(model=loaded, test=split_data.test)
 
 
 # ── Attack 12: Concurrent access ─────────────────────────────────────────
