@@ -21,7 +21,7 @@ Import and use:
     >>> verdict = ml.assess(final, test=s.test)       # one-time final exam
 """
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 # Core workflow functions
 from .split import split, split_temporal, split_group

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlw"
-version = "1.1.0"
+version = "1.1.1"
 description = "ML that works. One import, the Hastie workflow in code."
 readme = "README.md"
 license = "MIT"
