@@ -35,7 +35,10 @@ jobs:
           working-directory: r
           extra-packages: any::rcmdcheck
 
-      - name: Run R CMD check
+      - name: Test
+        run: Rscript -e 'devtools::test("r")'
+
+      - name: R CMD check
         uses: r-lib/actions/check-r-package@v2
         with:
           working-directory: r
