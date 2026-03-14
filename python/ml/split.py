@@ -665,6 +665,9 @@ def _split_three_way(
         train_out.attrs["_ml_partition"] = "train"
         valid_out.attrs["_ml_partition"] = "valid"
         test_out.attrs["_ml_partition"] = "test"
+        train_out.attrs["_ml_target"] = target
+        valid_out.attrs["_ml_target"] = target
+        test_out.attrs["_ml_target"] = target
 
         # Layer 1: Register partitions in provenance registry
         from ._provenance import (
@@ -734,6 +737,9 @@ def _split_three_way(
         train_out.attrs["_ml_partition"] = "train"
         empty_valid.attrs["_ml_partition"] = "valid"
         test_out.attrs["_ml_partition"] = "test"
+        train_out.attrs["_ml_target"] = target
+        empty_valid.attrs["_ml_target"] = target
+        test_out.attrs["_ml_target"] = target
 
         # Layer 1: Register partitions in provenance registry
         from ._provenance import (
@@ -838,6 +844,9 @@ def _split_temporal(
     train.attrs["_ml_partition"] = "train"
     valid.attrs["_ml_partition"] = "valid"
     test.attrs["_ml_partition"] = "test"
+    train.attrs["_ml_target"] = target
+    valid.attrs["_ml_target"] = target
+    test.attrs["_ml_target"] = target
 
     # Layer 1: Register partitions in provenance registry
     from ._provenance import _fingerprint, _registry, audit_log, new_split_id, register_partition
@@ -1130,6 +1139,9 @@ def _split_group_holdout(
     train_out.attrs["_ml_partition"] = "train"
     valid_out.attrs["_ml_partition"] = "valid"
     test_out.attrs["_ml_partition"] = "test"
+    train_out.attrs["_ml_target"] = target
+    valid_out.attrs["_ml_target"] = target
+    test_out.attrs["_ml_target"] = target
 
     # Layer 1: Register partitions in provenance registry
     from ._provenance import _fingerprint, _registry, audit_log, new_split_id, register_partition

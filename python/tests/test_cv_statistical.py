@@ -209,12 +209,12 @@ class TestMonteCarloCoverage:
                     if cv_mean - 2 * cv_std <= ho_acc <= cv_mean + 2 * cv_std:
                         covered += 1
 
-                        coverage_rate = covered / n_trials
-                        # We expect ~95% coverage with ±2σ, but with only 20 trials
-                        # and small data, we accept ≥60% as evidence of no gross bias
-                        assert coverage_rate >= 0.50, \
-                        f"CV ± 2σ covered holdout only {coverage_rate:.0%} of the time " \
-                        f"({covered}/{n_trials}) — variance estimate may be wrong"
+        coverage_rate = covered / n_trials
+        # We expect ~95% coverage with ±2σ, but with only 20 trials
+        # and small data, we accept ≥60% as evidence of no gross bias
+        assert coverage_rate >= 0.50, \
+            f"CV ± 2σ covered holdout only {coverage_rate:.0%} of the time " \
+            f"({covered}/{n_trials}) — variance estimate may be wrong"
 
     def test_cv_coverage_regression(self, reg_signal_data):
         """Across 20 seeds, CV ± 2σ should cover holdout R² ≥60% of the time."""
@@ -239,9 +239,9 @@ class TestMonteCarloCoverage:
                     if cv_mean - 2 * cv_std <= ho_r2 <= cv_mean + 2 * cv_std:
                         covered += 1
 
-                        coverage_rate = covered / n_trials
-                        assert coverage_rate >= 0.50, \
-                        f"Regression CV coverage: {coverage_rate:.0%} ({covered}/{n_trials})"
+        coverage_rate = covered / n_trials
+        assert coverage_rate >= 0.50, \
+            f"Regression CV coverage: {coverage_rate:.0%} ({covered}/{n_trials})"
 
 
 # ---------------------------------------------------------------------------
@@ -267,29 +267,29 @@ class TestPropertyBased:
         if len(s.dev) < k:
             pytest.skip(f"dev too small ({len(s.dev)}) for {k} folds")
 
-            c = ml.cv(s, folds=k, seed=seed)
+        c = ml.cv(s, folds=k, seed=seed)
 
-            # Invariant 1: fold count
-            assert c.k == k
+        # Invariant 1: fold count
+        assert c.k == k
 
-            # Invariant 2: no validation overlap
-            all_valid = []
-            for _, v in c.folds:
-                all_valid.extend(v.index.tolist())
-                assert len(all_valid) == len(set(all_valid)), "validation overlap detected"
+        # Invariant 2: no validation overlap
+        all_valid = []
+        for _, v in c.folds:
+            all_valid.extend(v.index.tolist())
+        assert len(all_valid) == len(set(all_valid)), "validation overlap detected"
 
-                # Invariant 3: complete coverage
-                assert sorted(all_valid) == sorted(s.dev.index.tolist()), "incomplete coverage"
+        # Invariant 3: complete coverage
+        assert sorted(all_valid) == sorted(s.dev.index.tolist()), "incomplete coverage"
 
-                # Invariant 4: train/valid disjoint per fold
-                for t, v in c.folds:
-                    assert len(set(t.index) & set(v.index)) == 0, "train/valid overlap"
+        # Invariant 4: train/valid disjoint per fold
+        for t, v in c.folds:
+            assert len(set(t.index) & set(v.index)) == 0, "train/valid overlap"
 
-                    # Invariant 5: no invented rows
-                    dev_idx = set(s.dev.index.tolist())
-                    for t, v in c.folds:
-                        assert set(t.index).issubset(dev_idx), "invented train rows"
-                        assert set(v.index).issubset(dev_idx), "invented valid rows"
+        # Invariant 5: no invented rows
+        dev_idx = set(s.dev.index.tolist())
+        for t, v in c.folds:
+            assert set(t.index).issubset(dev_idx), "invented train rows"
+            assert set(v.index).issubset(dev_idx), "invented valid rows"
 
     @pytest.mark.parametrize("n_features", [1, 2, 5, 20, 50])
     def test_invariants_hold_across_feature_counts(self, n_features):
@@ -308,7 +308,7 @@ class TestPropertyBased:
         all_valid = []
         for _, v in c.folds:
             all_valid.extend(v.index.tolist())
-            assert len(all_valid) == len(set(all_valid))
+        assert len(all_valid) == len(set(all_valid))
 
 
 # ---------------------------------------------------------------------------
@@ -368,7 +368,7 @@ class TestAdversarialEdgeCases:
         all_valid = []
         for _, v in c.folds:
             all_valid.extend(v.index.tolist())
-            assert len(all_valid) == len(s.dev)
+        assert len(all_valid) == len(s.dev)
 
     def test_duplicate_rows(self):
         """All rows identical except target — split/cv handles gracefully."""

@@ -181,7 +181,8 @@ def test_screen_timing_column(small_classification_data):
 
 def test_screen_cv_std_column(small_classification_data):
     """screen() on CVResult includes cv_std columns."""
-    cv = ml.split(data=small_classification_data, target="target", seed=42, folds=3)
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+    cv = ml.cv(s, folds=3, seed=42)
     result = ml.screen(data=cv, target="target", seed=42,
                        algorithms=["logistic"])
     # At least one _cv_std column should be present for CVResult
@@ -191,7 +192,8 @@ def test_screen_cv_std_column(small_classification_data):
 
 def test_screen_cv_std_positive(small_classification_data):
     """cv_std values are non-negative."""
-    cv = ml.split(data=small_classification_data, target="target", seed=42, folds=3)
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+    cv = ml.cv(s, folds=3, seed=42)
     result = ml.screen(data=cv, target="target", seed=42,
                        algorithms=["logistic"])
     std_cols = [c for c in result.columns if c.endswith("_cv_std")]

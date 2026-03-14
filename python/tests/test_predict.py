@@ -331,9 +331,9 @@ def test_ml_predict_proba_matches_model_method(small_classification_data):
 # ── NaN passthrough for tree-based non-forest algorithms ──────────────────────
 
 
-@pytest.mark.parametrize("algorithm", ["gradient_boosting", "extra_trees"])
+@pytest.mark.parametrize("algorithm", ["extra_trees"])
 def test_nan_passthrough_tree_algos(algorithm):
-    """gradient_boosting and extra_trees pass NaN through without warning ."""
+    """extra_trees passes NaN through without warning."""
     import warnings
 
     rng = np.random.RandomState(42)
@@ -353,3 +353,23 @@ def test_nan_passthrough_tree_algos(algorithm):
 
     nan_warnings = [w for w in caught if "NaN" in str(w.message) and "passed through" not in str(w.message)]
     assert len(nan_warnings) == 0, f"Unexpected NaN warning for {algorithm}: {[str(w.message) for w in nan_warnings]}"
+
+
+def test_nan_imputation_gradient_boosting():
+    """gradient_boosting auto-imputes NaN (sklearn GBT doesn't handle NaN natively)."""
+    import warnings
+
+    rng = np.random.RandomState(42)
+    data = pd.DataFrame({
+        "x1": rng.rand(200),
+        "x2": rng.rand(200),
+        "target": rng.choice([0, 1], 200),
+    })
+    data.loc[data.index[:20], "x1"] = float("nan")
+
+    s = ml.split(data=data, target="target", seed=42)
+    with warnings.catch_warnings(record=True):
+        warnings.simplefilter("always")
+        model = ml.fit(data=s.train, target="target", algorithm="gradient_boosting", seed=42)
+        preds = ml.predict(model, s.valid)
+    assert len(preds) == len(s.valid)

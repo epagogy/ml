@@ -343,7 +343,8 @@ def test_evaluate_silent_on_untagged_data(small_classification_data):
     s = ml.split(data=small_classification_data, target="target", seed=42)
     model = ml.fit(data=s.train, target="target", seed=42)
 
-    untagged = pd.DataFrame(s.valid.values, columns=s.valid.columns)
+    untagged = s.valid.copy()
+    untagged.attrs = {}
     assert "_ml_partition" not in untagged.attrs
 
     with warnings.catch_warnings(record=True) as w:

@@ -18,7 +18,7 @@ from ._types import CVResult, DataError, Model
 
 def fit(
     data: pd.DataFrame | CVResult,
-    target: str,
+    target: str | None = None,
     *,
     algorithm: str = "auto",
     backend=None,
@@ -119,6 +119,21 @@ def fit(
         )
 
     # Auto-convert Polars/other DataFrames to pandas
+
+    # Infer target from CVResult or SplitResult partition when not provided
+    if target is None:
+        if isinstance(data, CVResult) and data.target is not None:
+            target = data.target
+        elif hasattr(data, '_target') and data._target is not None:
+            target = data._target
+        elif isinstance(data, pd.DataFrame) and data.attrs.get("_ml_target") is not None:
+            target = data.attrs["_ml_target"]
+        elif isinstance(data, pd.DataFrame):
+            from ._types import ConfigError
+            raise ConfigError(
+                "target= is required when passing a raw DataFrame. "
+                "Example: ml.fit(data, 'target_col', seed=42)"
+            )
 
     # Validate data type early
     if not isinstance(data, (pd.DataFrame, CVResult)):
@@ -746,6 +761,9 @@ def _fit_cv(
     # Suppress per-fold scaling/imputation warnings (fire once, not N times)
     t0 = time.perf_counter()
     fold_metrics = []
+    # OOF prediction collectors
+    oof_preds_parts: list[pd.Series] = []
+    oof_proba_parts: list[tuple[np.ndarray, np.ndarray]] = []  # (indices, proba)
     _suppress_rt = resolved_algorithm in ("linear", "elastic_net", "logistic")
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message=".*Auto-scaling.*")
@@ -853,6 +871,11 @@ def _fit_cv(
             metrics = _compute_metrics(y_valid, y_pred_decoded, detected_task, estimator, X_valid_clean, proba=fold_proba)
             fold_metrics.append(metrics)
 
+            # Collect OOF predictions
+            oof_preds_parts.append(pd.Series(y_pred_decoded.values, index=fold_valid.index))
+            if fold_proba is not None:
+                oof_proba_parts.append((fold_valid.index.to_numpy(), fold_proba))
+
     # After all folds: refit on ALL data (warnings visible here — single fit)
     drop_cols_final = [target] + ([weights] if weights else [])
     X_all = data.drop(columns=drop_cols_final)
@@ -947,6 +970,19 @@ def _fit_cv(
         scores_dict[f"{metric_name}_mean"] = float(np.mean(vals))
         scores_dict[f"{metric_name}_std"] = float(np.std(vals, ddof=1))
 
+    # Assemble OOF predictions
+    _cv_preds = None
+    _cv_proba = None
+    if oof_preds_parts:
+        _cv_preds = pd.concat(oof_preds_parts).sort_index()
+    if oof_proba_parts:
+        # Assemble full probability matrix ordered by original index
+        n_total = len(data)
+        n_classes = oof_proba_parts[0][1].shape[1]
+        _cv_proba = np.empty((n_total, n_classes), dtype=np.float64)
+        for indices, proba in oof_proba_parts:
+            _cv_proba[indices] = proba
+
     # Build Model with scores_ and per-fold metrics
     _model = Model(
         _model=final_engine,
@@ -965,6 +1001,8 @@ def _fit_cv(
         _time=fit_time,
         _balance=balance,
         _sample_weight_col=weights,  # A12: store for reference
+        cv_predictions_=_cv_preds,
+        cv_probabilities_=_cv_proba if detected_task == "classification" else None,
     )
     # Layer 2: Store provenance for cross-verb checks
     from ._provenance import _fingerprint, audit_log, build_provenance

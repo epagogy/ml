@@ -105,6 +105,26 @@ def _detect_gpu() -> bool:
 
 _VALID_ENGINES = ("auto", "ml", "sklearn", "native")
 
+ALGORITHM_ALIASES = {
+    "xgb": "xgboost",
+    "rf": "random_forest",
+    "lr": "logistic",
+    "lm": "linear",
+    "nb": "naive_bayes",
+    "forest": "random_forest",
+    "boost": "xgboost",
+    "lasso": "elastic_net",
+    "ridge": "linear",
+    "dt": "decision_tree",
+    "et": "extra_trees",
+    "gb": "gradient_boosting",
+    "hgb": "histgradient",
+    "lgb": "lightgbm",
+    "cb": "catboost",
+    "ada": "adaboost",
+    "en": "elastic_net",
+}
+
 
 def create(
     algorithm: str,

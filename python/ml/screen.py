@@ -109,7 +109,7 @@ def _screen_one_algo(
 
 def screen(
     data: SplitResult | CVResult | pd.DataFrame,
-    target: str,
+    target: str | None = None,
     *,
     algorithms: list[str] | None = None,
     seed: int,
@@ -208,6 +208,18 @@ def screen(
     """
     from . import _engines
     from ._types import ConfigError, CVResult, Leaderboard, SplitResult
+
+    # Infer target from SplitResult or CVResult when not provided
+    if target is None:
+        if isinstance(data, CVResult) and data.target is not None:
+            target = data.target
+        elif isinstance(data, SplitResult) and data._target is not None:
+            target = data._target
+        elif isinstance(data, pd.DataFrame):
+            raise ConfigError(
+                "target= is required when passing a raw DataFrame. "
+                "Example: ml.screen(df, 'target_col', seed=42)"
+            )
 
     # Convenience: accept raw DataFrame — auto-split internally
     if isinstance(data, pd.DataFrame):

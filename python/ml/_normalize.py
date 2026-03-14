@@ -23,7 +23,7 @@ LINEAR_ALGORITHMS = frozenset({"logistic", "linear", "svm", "knn", "elastic_net"
 # Algorithms that handle NaN natively — no imputation needed
 TREE_ALGORITHMS = frozenset({
     "xgboost", "random_forest", "extra_trees", "decision_tree",
-    "gradient_boosting", "histgradient", "adaboost",
+    "histgradient", "adaboost",
     "catboost", "lightgbm", "auto",
 })
 ONEHOT_MAX_CARDINALITY = 50

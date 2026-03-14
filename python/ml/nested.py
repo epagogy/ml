@@ -173,8 +173,9 @@ def nested_cv(
                 with warnings.catch_warnings():
                     warnings.filterwarnings("ignore")
                     from .split import split as _split
-                    inner_cv = _split(outer_train, target,
-                                      folds=inner_folds, seed=inner_seed)
+                    from .cv import cv as _cv
+                    inner_split = _split(outer_train, target, seed=inner_seed)
+                    inner_cv = _cv(inner_split, folds=inner_folds, seed=inner_seed)
                     inner_model = fit(inner_cv, target,
                                       algorithm=algo, seed=inner_seed)
                     # Inner score: mean CV score for primary metric

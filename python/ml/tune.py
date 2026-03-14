@@ -37,10 +37,6 @@ TUNE_DEFAULTS: dict[str, dict] = {
         "subsample": (0.5, 1.0),
         "min_samples_split": (2, 10),
         "min_samples_leaf": (1, 5),
-        "reg_lambda": (0.001, 10.0),            # L2 regularization (log-uniform)
-        "gamma": (0.0, 5.0),                    # min split gain
-        "colsample_bytree": (0.3, 1.0),         # column subsampling per tree
-        "min_child_weight": (1.0, 10.0),         # min hessian per leaf (log-uniform)
     },
     "random_forest": {
         "max_depth": (5, 30),
@@ -608,12 +604,22 @@ def tune(
 
     # Refit on ALL data with best params (suppress duplicate NaN warning)
     from .fit import fit
+    # Separate engine hyperparams that collide with fit() named params.
+    # KNN 'weights' (hyperparameter: "uniform"/"distance") collides with
+    # fit(weights=) (sample weight column name). Pop it and set on the
+    # engine after fit.
+    refit_params = dict(best_trial["params"])
+    _engine_weights_param = refit_params.pop("weights", None)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message=".*rows contain NaN.*")
         tuned_model = fit(
             data=data, target=target, algorithm=algo, seed=seed,
-            task=task, weights=weights, balance=balance, **best_trial["params"]
+            task=task, weights=weights, balance=balance, **refit_params
         )
+    # Re-set KNN weights param on the underlying engine (it's a model
+    # hyperparameter, not sample weights). Must refit after set_params.
+    if _engine_weights_param is not None and hasattr(tuned_model._model, "set_params"):
+        tuned_model._model.set_params(weights=_engine_weights_param)
 
     # Build tuning history DataFrame
     history_records = []
@@ -626,9 +632,14 @@ def tune(
         "score", ascending=not higher_is_better
     ).reset_index(drop=True)
 
+    # Strip engine-level 'weights' from best_params_ to prevent collision
+    # when users do ml.fit(..., **tuned.best_params). KNN 'weights' is an
+    # engine hyperparameter ("uniform"/"distance"), not sample weights.
+    clean_best_params = {k: v for k, v in best_trial["params"].items() if k != "weights"}
+
     return TuningResult(
         best_model=tuned_model,
-        best_params_=dict(best_trial["params"]),
+        best_params_=clean_best_params,
         tuning_history_=tuning_history,
         metric_=primary_metric,
     )

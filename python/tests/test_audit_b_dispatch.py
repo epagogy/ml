@@ -272,7 +272,8 @@ class TestCVResultToAssess:
     def test_assess_rejects_cvresult(self, clf_data):
         """assess() type-checks for Model/TuningResult first.
         CVResult should fail at the model check, not the guard."""
-        cv = ml.split(clf_data, "target", seed=42, folds=3)
+        s = ml.split(clf_data, "target", seed=42)
+        cv = ml.cv(s, folds=3, seed=42)
         with pytest.raises(Exception, match="Model|TuningResult|ConfigError"):
             ml.assess(cv, test=clf_data)
 

@@ -651,6 +651,8 @@ class SplitResult:
         """
         result = pd.concat([self.train, self.valid]).reset_index(drop=True)
         result.attrs["_ml_partition"] = "dev"
+        if self._target is not None:
+            result.attrs["_ml_target"] = self._target
         # Layer 1: Register dev partition in provenance registry
         from ._provenance import get_split_id, register_partition
         train_sid = get_split_id(self.train)
@@ -831,6 +833,9 @@ class Model:
     _seed_std: float | None = None  # std of seed scores (stability diagnostic)
     # A4: threshold optimisation — set by optimize()
     _threshold: float | None = None  # decision threshold; None means use default (0.5)
+    # OOF predictions from CV path
+    cv_predictions_: Any = None     # pd.Series of out-of-fold predictions, None for holdout
+    cv_probabilities_: Any = None   # np.ndarray (n_dev, n_classes) for classification, None otherwise
 
     # Public read-only properties
     @property

@@ -41,7 +41,7 @@ def _broken_cv_overlapping_folds(dev, k, seed):
         valid_idx = rng.choice(n, size=n // k, replace=False)
         train_idx = np.setdiff1d(np.arange(n), valid_idx)
         fold_list.append((dev.iloc[train_idx], dev.iloc[valid_idx]))
-        return fold_list
+    return fold_list
 
 
 def _broken_cv_incomplete_coverage(dev, k, seed):
@@ -55,7 +55,7 @@ def _broken_cv_incomplete_coverage(dev, k, seed):
         valid_idx = indices[i * fold_size:(i + 1) * fold_size]
         train_idx = np.setdiff1d(indices, valid_idx)
         fold_list.append((dev.iloc[train_idx], dev.iloc[valid_idx]))
-        return fold_list
+    return fold_list
 
 
 def _broken_cv_invented_rows(dev, k, seed):
@@ -74,7 +74,7 @@ def _broken_cv_invented_rows(dev, k, seed):
         fake_row.index = [n + 999] # index not in dev
         valid_df = pd.concat([valid_df, fake_row])
         fold_list.append((dev.iloc[train_idx], valid_df))
-        return fold_list
+    return fold_list
 
 
 def _broken_temporal_future_leak(dev, k):
@@ -90,7 +90,7 @@ def _broken_temporal_future_leak(dev, k):
         train_idx = np.arange(0, n)
         train_idx = np.setdiff1d(train_idx, valid_idx) # remove valid but keep future
         fold_list.append((dev.iloc[train_idx], dev.iloc[valid_idx]))
-        return fold_list
+    return fold_list
 
 
 def _broken_group_leaking(dev, k, group_col, seed):
@@ -105,7 +105,7 @@ def _broken_group_leaking(dev, k, group_col, seed):
         valid_idx = indices[i * fold_size:(i + 1) * fold_size]
         train_idx = np.setdiff1d(indices, valid_idx)
         fold_list.append((dev.iloc[train_idx], dev.iloc[valid_idx]))
-        return fold_list
+    return fold_list
 
 
 # ---------------------------------------------------------------------------

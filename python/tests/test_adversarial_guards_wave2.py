@@ -465,6 +465,7 @@ class TestCVResultBypass:
 
     def test_fit_cvresult_skips_guard(self, split_data):
         """fit() on CVResult skips guard — by design (CV manages its own splits)."""
-        cv = ml.split(split_data.train, "target", seed=42, folds=3)
+        s = ml.split(split_data.train, "target", seed=42)
+        cv = ml.cv(s, folds=3, seed=42)
         model = ml.fit(data=cv, target="target", seed=42)
         assert model is not None

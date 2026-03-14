@@ -126,8 +126,9 @@ def test_balance_false_is_default(imbalanced_split):
 
 def test_balance_cv_path(imbalanced_data):
     """balance=True should work with CV path (split with folds)."""
-    s = ml.split(imbalanced_data, "target", seed=42, folds=3)
-    model = ml.fit(s, "target", algorithm="logistic", seed=42, balance=True)
+    s = ml.split(imbalanced_data, "target", seed=42)
+    cv = ml.cv(s, folds=3, seed=42)
+    model = ml.fit(cv, "target", algorithm="logistic", seed=42, balance=True)
     assert model.scores_ is not None
     assert "accuracy_mean" in model.scores_
 

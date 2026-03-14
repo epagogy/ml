@@ -23,7 +23,8 @@ def test_fit_basic_holdout(small_classification_data):
 
 def test_fit_cv_path(small_classification_data):
     """Test CV fit."""
-    cv = ml.split(data=small_classification_data, target="target", folds=2, seed=42)
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+    cv = ml.cv(s, folds=2, seed=42)
     model = ml.fit(data=cv, target="target", algorithm="random_forest", seed=42)
 
     assert isinstance(model, ml.Model)
@@ -130,7 +131,8 @@ def test_fit_auto_algorithm():
 
 def test_fit_cv_fold_scores(small_classification_data):
     """CV fit populates fold_scores_ with per-fold metric dicts."""
-    cv = ml.split(data=small_classification_data, target="target", folds=3, seed=42)
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+    cv = ml.cv(s, folds=3, seed=42)
     model = ml.fit(data=cv, target="target", algorithm="random_forest", seed=42)
 
     assert model.fold_scores_ is not None
@@ -424,7 +426,8 @@ def test_seed_list_seed_scores_and_std():
     import warnings
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        cv = ml.split(data=data, target="target", folds=2, seed=42)
+        s = ml.split(data=data, target="target", seed=42)
+        cv = ml.cv(s, folds=2, seed=42)
         model = ml.fit(data=cv, target="target",
                        algorithm="random_forest", seed=[42, 43])
 

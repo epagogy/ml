@@ -456,6 +456,7 @@ def test_golden_linear_regression(medium_regression):
         assert abs(m["r2"] - 0.9533) < 0.02
 
 
+@_requires_rust
 def test_golden_knn_binary(medium_classification):
     """KNN binary metrics pinned to known values (seed=42, 200 rows).
 
@@ -477,6 +478,7 @@ def test_golden_knn_binary(medium_classification):
 # Stochastic algorithms: atol=0.01 (empirical t-CI from 10-seed calibration).
 
 
+@_requires_rust
 def test_golden_decision_tree_clf(medium_classification):
     """decision_tree binary metrics pinned (seed=42, 200 rows, deterministic).
 
@@ -516,6 +518,7 @@ def test_golden_decision_tree_reg(medium_regression):
     assert m["r2"] > 0.60, f"r2={m['r2']} too low"
 
 
+@_requires_rust
 def test_golden_naive_bayes_clf(medium_classification):
     """naive_bayes binary metrics pinned (seed=42, 200 rows, deterministic).
 
@@ -550,6 +553,7 @@ def test_golden_elastic_net_reg(medium_regression):
     assert m["r2"] > 0.55, f"r2={m['r2']} too low"
 
 
+@_requires_rust
 def test_golden_svm_clf(medium_classification):
     """svm binary metrics pinned (seed=42, 200 rows, deterministic).
 
@@ -588,6 +592,7 @@ def test_golden_svm_reg(medium_regression):
     assert m["r2"] > 0.60, f"r2={m['r2']} too low"
 
 
+@_requires_rust
 def test_golden_adaboost_clf(medium_classification):
     """adaboost binary metrics pinned (seed=42, 200 rows).
 
@@ -647,6 +652,7 @@ def test_golden_gradient_boosting_reg(medium_regression):
     assert m["r2"] > 0.75, f"r2={m['r2']} too low"
 
 
+@_requires_rust
 def test_golden_histgradient_clf(medium_classification):
     """histgradient binary metrics pinned (seed=42, 200 rows).
 
@@ -686,6 +692,7 @@ def test_golden_histgradient_reg(medium_regression):
     assert m["r2"] > 0.70, f"r2={m['r2']} too low"
 
 
+@_requires_rust
 def test_golden_extra_trees_clf(medium_classification):
     """extra_trees binary metrics pinned (seed=42, 200 rows, stochastic, atol=0.01)."""
     s = ml.split(data=medium_classification, target="target", seed=42)

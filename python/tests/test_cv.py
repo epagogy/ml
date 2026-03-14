@@ -75,8 +75,8 @@ class TestCV:
         all_valid_indices = []
         for _, valid_df in c.folds:
             all_valid_indices.extend(valid_df.index.tolist())
-            # All dev rows appear in validation
-            assert sorted(all_valid_indices) == sorted(dev.index.tolist())
+        # All dev rows appear in validation
+        assert sorted(all_valid_indices) == sorted(dev.index.tolist())
 
     def test_cv_no_fold_overlap(self, clf_split):
         """Validation folds don't overlap."""

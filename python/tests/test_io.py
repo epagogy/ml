@@ -58,7 +58,8 @@ def test_load_file_not_found_error(tmp_path):
 
 def test_save_load_cv_scores(small_classification_data, tmp_path):
     """Test CV scores are persisted."""
-    cv = ml.split(data=small_classification_data, target="target", folds=2, seed=42)
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+    cv = ml.cv(s, folds=2, seed=42)
     model = ml.fit(data=cv, target="target", seed=42)
 
     path = tmp_path / "model.ml"

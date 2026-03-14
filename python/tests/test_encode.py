@@ -344,8 +344,8 @@ def test_encode_target_cv_alignment():
         "city": rng.choice(["NYC", "LA", "Chicago"], n),
         "label": rng.choice([0, 1], n),
     })
-    cv = ml.split(data=data, target="label", folds=5, seed=42)
     s = ml.split(data=data, target="label", seed=42)
+    cv = ml.cv(s, folds=5, seed=42)
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

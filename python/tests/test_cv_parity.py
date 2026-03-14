@@ -116,11 +116,11 @@ def assert_complete_coverage(folds, dev_index):
     all_valid = set()
     for _, valid_df in folds:
         all_valid.update(valid_df.index.tolist())
-        expected = set(dev_index.tolist())
-        missing = expected - all_valid
-        extra = all_valid - expected
-        assert len(missing) == 0, f"{len(missing)} dev rows never appear in validation"
-        assert len(extra) == 0, f"{len(extra)} rows in validation not from dev"
+    expected = set(dev_index.tolist())
+    missing = expected - all_valid
+    extra = all_valid - expected
+    assert len(missing) == 0, f"{len(missing)} dev rows never appear in validation"
+    assert len(extra) == 0, f"{len(extra)} rows in validation not from dev"
 
 
 def assert_train_valid_disjoint(folds):
@@ -160,7 +160,7 @@ def assert_temporal_ordering(folds):
     for i, (train_df, valid_df) in enumerate(folds):
         if len(train_df) == 0 or len(valid_df) == 0:
             continue
-            assert train_df.index.max() < valid_df.index.min(), \
+        assert train_df.index.max() < valid_df.index.min(), \
             f"Fold {i}: train max index {train_df.index.max()} >= " \
             f"valid min index {valid_df.index.min()}"
 
@@ -210,11 +210,11 @@ class TestCVvsSklearnKFold:
         for train_idx, valid_idx in kf.split(X):
             folds.append((dev.iloc[train_idx], dev.iloc[valid_idx]))
 
-            assert_fold_count(folds, k)
-            assert_balanced_fold_sizes(folds, len(dev), k)
-            assert_no_valid_overlap(folds)
-            assert_complete_coverage(folds, dev.index)
-            assert_train_valid_disjoint(folds)
+        assert_fold_count(folds, k)
+        assert_balanced_fold_sizes(folds, len(dev), k)
+        assert_no_valid_overlap(folds)
+        assert_complete_coverage(folds, dev.index)
+        assert_train_valid_disjoint(folds)
 
     def test_stratification_parity(self, clf_200):
         """Both ml.cv(stratify=True) and sklearn StratifiedKFold preserve class ratio."""
@@ -230,7 +230,7 @@ class TestCVvsSklearnKFold:
         sk_folds = []
         for train_idx, valid_idx in skf.split(X, y):
             sk_folds.append((dev.iloc[train_idx], dev.iloc[valid_idx]))
-            assert_stratification_ratio(sk_folds, "target", tolerance=0.08)
+        assert_stratification_ratio(sk_folds, "target", tolerance=0.08)
 
     def test_fold_size_matches_sklearn(self, clf_200):
         """ml.cv(stratify=False) and sklearn KFold produce same fold sizes."""
@@ -312,11 +312,11 @@ class TestCVGroupvsSklearnGroupKFold:
         for train_idx, valid_idx in gkf.split(X, groups=groups):
             folds.append((dev.iloc[train_idx], dev.iloc[valid_idx]))
 
-            assert_fold_count(folds, 4)
-            assert_no_valid_overlap(folds)
-            assert_complete_coverage(folds, dev.index)
-            assert_train_valid_disjoint(folds)
-            assert_group_non_overlap(folds, "group_id")
+        assert_fold_count(folds, 4)
+        assert_no_valid_overlap(folds)
+        assert_complete_coverage(folds, dev.index)
+        assert_train_valid_disjoint(folds)
+        assert_group_non_overlap(folds, "group_id")
 
     def test_group_count_per_fold_matches(self, group_200):
         """Both frameworks distribute groups across folds comparably."""
@@ -375,10 +375,10 @@ class TestCVTemporalvsSklearnTSS:
         for train_idx, valid_idx in tss.split(X):
             folds.append((dev.iloc[train_idx], dev.iloc[valid_idx]))
 
-            assert_fold_count(folds, 5)
-            assert_no_valid_overlap(folds)
-            assert_train_valid_disjoint(folds)
-            assert_temporal_ordering(folds)
+        assert_fold_count(folds, 5)
+        assert_no_valid_overlap(folds)
+        assert_train_valid_disjoint(folds)
+        assert_temporal_ordering(folds)
 
     def test_expanding_window_train_grows(self, temporal_500):
         """Expanding window: each fold's train >= previous fold's train."""
