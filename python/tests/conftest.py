@@ -48,7 +48,11 @@ def _gc_after_test():
     Prevents memory accumulation on constrained hardware (macbook Air 16GB,
     CI runners with 7GB). Cost: ~1ms per test. Prevents: OOM death spiral
     on systems without Linux OOM killer (macOS).
+
+    Also resets guards to "off" — some tests set guards="strict" and state
+    leaks into subsequent test files via the global _CONFIG dict.
     """
+    ml.config(guards="off")
     yield
     # Close matplotlib figures (Agg buffer accumulation across tests)
     try:

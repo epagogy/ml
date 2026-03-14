@@ -176,6 +176,7 @@ class TestSerializationBypass:
     def test_parquet_roundtrip_preserves_fingerprint(self, split_data, tmp_path):
         """Parquet preserves cell values — fingerprint matches registry.
         Content-addressed identity survives format roundtrips."""
+        pytest.importorskip("pyarrow")
         path = tmp_path / "train.parquet"
         split_data.train.to_parquet(path, index=False)
         loaded = pd.read_parquet(path)
