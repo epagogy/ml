@@ -3,18 +3,19 @@ name: R CI
 on:
   push:
     branches: [main]
-    paths: ["ml/r/**", "al/**"]
+    paths: ["r/**", "al/**"]
   pull_request:
     branches: [main]
-    paths: ["ml/r/**", "al/**"]
+    paths: ["r/**", "al/**"]
+  workflow_dispatch:
 
 jobs:
   check:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        r-version: ["4.3", "4.4"]
+        r-version: ["4.3", "4.5"]
 
     steps:
       - uses: actions/checkout@v4
@@ -31,12 +32,12 @@ jobs:
       - name: Install R dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          working-directory: ml/r
+          working-directory: r
           extra-packages: any::rcmdcheck
 
       - name: Run R CMD check
         uses: r-lib/actions/check-r-package@v2
         with:
-          working-directory: ml/r
+          working-directory: r
           args: 'c("--as-cran", "--no-manual")'
           error-on: '"error"'

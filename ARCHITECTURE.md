@@ -1,135 +1,112 @@
 # Architecture
 
-This document records the foundational decisions for the mlwork ecosystem. These are locked — changes require explicit discussion and a council audit.
+Foundational decisions for the ml ecosystem. These are locked. Changes require explicit design review.
 
 ## What is a "grammar"?
 
-Inspired by Chomsky's formal grammars and Wilkinson's *Grammar of Graphics*, a **grammar** here means a finite set of typed composable primitives that generate all valid workflows in a domain while rejecting invalid ones at the type level. It is not a library of functions — it is a closed algebraic system where composition is guaranteed safe.
+Inspired by Chomsky's formal grammars and Wilkinson's GoG (*The Grammar of Graphics*): a finite set of typed composable primitives that generate all valid workflows in a domain while rejecting invalid ones at the type level.
 
-What makes this different from a library: closure (combining verbs produces valid workflows), generativity (finite verbs generate infinite valid pipelines), and rejection (invalid compositions fail at definition time, not at runtime).
+What makes this different from a library: **closure** (combining verbs produces valid workflows), **generativity** (finite verbs generate infinite valid pipelines), **rejection** (invalid compositions fail at definition time, not runtime).
 
-## Repository Structure
-
-```
-mlwork-org/ml
-├── al/                    # Algorithm Layer — shared engine (Rust workspace)
-│   ├── core/              #   Core algorithms: fit, predict, serialize
-│   ├── py/                #   PyO3 bindings → ml-py on PyPI
-│   └── r/                 #   extendr bindings → linked into R package
-├── ml/                    # ML Grammar — first workflow grammar
-│   ├── python/            #   import ml — PyPI package "mlw"
-│   ├── r/                 #   library(ml) — CRAN package
-│   └── datasets/          #   Bundled test/benchmark data
-├── site/                  # mlwork.org — project website
-├── .github/workflows/     # CI/CD
-├── ARCHITECTURE.md        # This file
-├── README.md
-├── LICENSE                # MIT
-└── CONTRIBUTING.md
-```
-
-Future grammars land as siblings to `ml/`:
+## Repository structure
 
 ```
-├── rl/                    # Reinforcement Learning Grammar (planned)
-│   ├── python/
-│   └── r/
-├── ag/                    # Agent Grammar (planned)
-│   ├── python/
-│   └── r/
+epagogy/ml
+├── al/                    Shared Rust engine (workspace)
+│   ├── core/              11 algorithm families, pure Rust
+│   ├── py/                PyO3 bindings
+│   └── r/                 extendr bindings
+├── python/                pip install mlw
+├── r/                     library(ml)
+├── datasets/              Golden test fixtures
+└── LICENSE                MIT
 ```
+
+Future grammars land as siblings: `rl/` (reinforcement learning), `ag/` (agents).
 
 ## 12 Locked Decisions
 
-### 1. Layer Model
+### 1. Layer model
 
-**AL** (Algorithm Layer) implements Represent × Objective × Search × Compose — the universal engine inside every grammar. **ML**, **RL**, **AG** are workflow shells that encode domain-specific rules as types.
-
-AL is validated for supervised ML. Extension to RL and AG is hypothesized but unproven. If no second grammar ships within 18 months of ml v1.0.0, revisit the al/ naming.
+**AL** (Algorithm Layer) implements Represent x Objective x Search x Compose. **ML**, **RL**, **AG** are workflow shells encoding domain-specific rules as types.
 
 ### 2. Monorepo
 
-One repository, multiple grammar packages. Atomic commits across grammar + engine. Cargo workspace for Rust, independent Python/R packages per grammar.
+One repository, multiple packages. Atomic commits across grammar + engine.
 
-### 3. AL = Spec, Not Implementation
+### 3. AL = Spec, not implementation
 
-Rust is one implementation of the AL spec. The `engine=` parameter already dispatches between backends (`auto`, `ml`, `sklearn`, `native`). Future backends (GPU, other languages) plug into the same contract.
+Rust is one implementation. The `engine=` parameter dispatches between backends. Future backends plug into the same contract.
 
-### 4. Package Naming
+### 4. Package naming
 
-Grammar = package = import name. `ml` in Python/R, `rl` when it ships, `al` for the engine. PyPI: `mlw` (pure Python wrapper), `ml-py` (Rust wheels). CRAN: `ml`.
+Grammar = package = import name. PyPI: `mlw` (Python wrapper), `ml-py` (Rust wheels). CRAN: `ml`.
 
-### 5. AL Primitive Contract
+### 5. AL primitive contract
 
 Every algorithm implements exactly four operations:
 
 ```
-fit(X, y, params) → ModelState (JSON-serializable)
-predict(ModelState, X) → predictions
-serialize(ModelState) → bytes
-deserialize(bytes) → ModelState
+fit(X, y, params)        -> ModelState (JSON-serializable)
+predict(ModelState, X)   -> predictions
+serialize(ModelState)    -> bytes
+deserialize(bytes)       -> ModelState
 ```
 
-Everything else (cross-validation, feature importance, calibration) lives in the grammar layer.
+Everything else (CV, feature importance, calibration) lives in the grammar layer.
 
-### 6. Error Taxonomy
+### 6. Error taxonomy
 
-Two error classes, never mixed:
-- **AL errors**: `SingularMatrix`, `EmptyData`, `ConvergenceFailed` — algorithm-level
-- **Grammar errors**: `LeakageDetected`, `AssessmentRepeated`, `SeedMissing` — workflow-level
+Two classes, never mixed:
+- **AL errors**: `SingularMatrix`, `EmptyData`, `ConvergenceFailed`
+- **Grammar errors**: `LeakageDetected`, `AssessmentRepeated`, `SeedMissing`
 
-### 7. Testing Contract
+### 7. Testing contract
 
 - Math invariants (Ridge KKT, logistic simplex, CART memorization)
-- Cross-language parity: 1e-6 tolerance for tabular, directional for neural
-- Roundtrip: serialize → deserialize → predict = bitwise identical
-- Lattice validity: every cell in the algorithm×task lattice tested
+- Cross-language parity: 1e-6 tolerance
+- Roundtrip: serialize -> deserialize -> predict = bitwise identical
+- Lattice: every algorithm x task cell tested
 
 ### 8. Versioning
 
-Independent semver per package. Breaking AL change = major version bump for all grammars that depend on it. Grammar changes don't affect AL version.
+Independent semver per package. Breaking AL change = major bump for all dependents.
 
-### 9. Lattice Artifact
+### 9. Lattice artifact
 
-Machine-readable YAML describing every algorithm×task cell:
+Machine-readable YAML for every algorithm x task cell:
 
 ```yaml
 - algorithm: random_forest
   task: binary_classification
   status: supported
-  engine: ml  # Rust
-  reason: null
+  engine: ml
 - algorithm: logistic
   task: regression
   status: rejected
-  reason: "Logistic regression is classification-only"
+  reason: "Classification-only"
 ```
 
-### 10. Grammar Admission Criteria
+### 10. Domain admission criteria
 
-A domain qualifies as a grammar when it has:
-1. **Typed primitives** — finite verb set with typed inputs/outputs
-2. **Closure** — composing verbs produces valid workflows
-3. **Generativity** — finite verbs generate infinite valid pipelines
-4. **Rejection** — invalid compositions fail at definition time
-5. **Terminal boundary** — clear "done" state (assess for ML, converge for RL)
+A domain qualifies when it has:
+1. **Typed verbs** with typed inputs/outputs
+2. **Closure** across compositions
+3. **Generativity** from finite verbs
+4. **Rejection** at definition time
+5. **Terminal boundary** (assess for ML, converge for RL)
 
 ### 11. License
 
-MIT for all packages. Code is open. Moat is relationship data (corrections, learnings, calibration).
+MIT for all packages.
 
-### 12. Directory Convention
+### 12. Directory convention
 
-`{grammar}/{language}/` for workflow packages, `al/` for the shared engine. Language directories contain self-contained packages that can be installed independently.
-
-## Intentional Tech Debt
-
-- **`al/core` crate name**: The Rust crate is still `name = "ml"` in Cargo.toml to avoid touching 20+ `use ml::` import statements across the Rust codebase. The directory is `al/core/` but the crate identity stays `ml`. This is cosmetic debt — no user impact, no correctness impact.
+`{language}/` for workflow packages, `al/` for the engine, `datasets/` for test data.
 
 ## Precedents
 
-- **LLVM**: Shared backend serving multiple language frontends (Clang, Rust, Swift). AL serves multiple grammar frontends.
-- **Chomsky hierarchy**: Formal grammars as algebraic systems with generative capacity and rejection. Direct inspiration for grammar admission criteria.
-- **scikit-learn Estimator protocol**: `fit`/`predict`/`transform` as the universal ML contract. AL's primitive contract is a stricter, serialization-first evolution.
-- **Cargo workspaces**: Independent semver for crates within a single repository. Same pattern here.
-- **tidyverse**: Grammar-based package family (`ggplot2` = grammar of graphics, `dplyr` = grammar of data manipulation). ML grammar follows this philosophy for machine learning.
+- **LLVM**: shared backend, multiple frontends
+- **Chomsky hierarchy**: formal grammars as algebraic systems
+- **scikit-learn Estimator protocol**: `fit`/`predict`/`transform`, evolved here with serialization-first design
+- **tidyverse**: grammar-based package family (`ggplot2`, `dplyr`)

@@ -24,7 +24,7 @@ jobs:
         run: pip install build
 
       - name: Build package
-        working-directory: ml/python
+        working-directory: python
         run: python -m build
 
       - name: Verify version matches tag
@@ -32,7 +32,7 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/v}"
           PKG_VERSION=$(python -c "
           import tomllib
-          with open('ml/python/pyproject.toml', 'rb') as f:
+          with open('python/pyproject.toml', 'rb') as f:
               print(tomllib.load(f)['project']['version'])
           ")
           if [ "$TAG" != "$PKG_VERSION" ]; then

@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 
 ## [4.1.0] — 2026-02-24 (internal)
 
-### Bug fixes (post-audit, W29–W35)
+### Bug fixes (post-review)
 
 - `encode(method='target')` — string target columns (e.g. "yes"/"no") no longer crash; uses `pd.factorize` before target statistics
 - `blend()` — proba DataFrames from `predict(proba=True)` now return correct `(n,)` shape instead of `(2n,)` flattened
@@ -82,7 +82,7 @@ All notable changes to this project will be documented in this file.
 ### Stats
 
 - **929+ public tests** (728 → 929+)
-- **893+ private moat tests** (7 previously-uncovered verbs now covered)
+- **893+ internal regression tests** (7 previously-uncovered verbs now covered)
 - **1,822+ total tests** across both suites
 - **38 verbs** + 3 data helpers
 - **14 algorithms** (all unchanged, no breaking changes)

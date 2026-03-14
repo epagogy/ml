@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# R
+*.Rproj.user
+.Rhistory
+.RData
+.Rproj.user/
+*.Rcheck/
+..Rcheck/
+r/man/*.Rd.bak
+r/*.tar.gz
+Rplots.pdf
+
+# Rust
+al/target/
+
+# Rendered outputs
+*.html
+*_files/
+!r/vignettes/*.Rmd
+
+# System
+.DS_Store
+*.swp
+logs.log
+
+# Build artifacts
+catboost_info/
+
+# Internal development docs
+SPEC_*.md
+BRAND.md
+CLAUDE.md
+.claude/
+ml_0.1.0.tar.gz
