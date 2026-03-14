@@ -1,0 +1,108 @@
+Hmm ... looks like a package
+Converting parsed Rd's to LaTeX ......
+Creating pdf output from LaTeX ...
+Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  : 
+  Running 'texi2dvi' on 'Rd2.tex' failed.
+Messages:
+/opt/R/arm64/bin/texi2dvi: makeindex failed
+Output:
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex)
+ restricted \write18 enabled.
+entering extended mode
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-01-19>
+(./Rd2.tex
+(/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/book.cls
+Document Class: book 2025/01/22 v1.4n Standard LaTeX document class
+(/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/bk10.clo)) (/Library/Frameworks/R.framework/Resources/share/texmf/tex/latex/Rd.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/ifthen.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/iftex/iftex.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/tools/longtable.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/tools/bm.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/alltt.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/tools/verbatim.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/url/url.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/textcomp.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?' option.
+(/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amstext.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsgen.sty)) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsbsy.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsopn.sty)) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/amsfonts.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/amssymb.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/eucal.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/fontenc.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/psnfss/times.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/inconsolata/zi4.sty `inconsolata-zi4' v1.12, 2019/05/17 Text macros for Inconsolata (msharpe) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/xkeyval/xkeyval.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/xkeyval/xkeyval.tex (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/xkeyval/xkvutils.tex (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/xkeyval/keyval.tex))))) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/graphics/color.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/graphics-cfg/color.cfg) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/graphics-def/pdftex.def) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/graphics/mathcolor.ltx)) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hyperref/hyperref.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/pdfescape/pdfescape.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/infwarerr/infwarerr.sty))) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hycolor/hycolor.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hyperref/nameref.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/refcount/refcount.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/gettitlestring/gettitlestring.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/kvoptions/kvoptions.sty))) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/etoolbox/etoolbox.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/stringenc/stringenc.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hyperref/pd1enc.def) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/intcalc/intcalc.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hyperref/puenc.def) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/bitset/bitset.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty))) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hyperref/hpdftex.def (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty)))) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/makeidx.sty)
+Writing index file Rd2.idx
+(/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/psnfss/t1ptm.fd) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def) (/private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/Rd2pdf11efc56a062/Rd2.aux) (/private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/Rd2pdf11efc56a062/Rd2.out) (/private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/Rd2pdf11efc56a062/Rd2.out) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/psnfss/ts1ptm.fd) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/inconsolata/t1zi4.fd) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/umsa.fd) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd) (/private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/Rd2pdf11efc56a062/Rd2.toc [1{/Users/simon/Library/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/Users/simon/Library/TinyTeX/texmf-dist/fonts/enc/dvips/base/8r.enc}{/Users/simon/Library/TinyTeX/texmf-dist/fonts/enc/dvips/inconsolata/i4-t1-0.enc}] [2])
+ignored error: Infinite glue shrinkage found in box being split [3] [4] [5]
+Overfull \hbox (51.70702pt too wide) in paragraph at lines 253--255
+[]\T1/ptm/m/n/10 A named list (Norm-State) con-tain-ing en-cod-ing/scaling state for use with []\T1/zi4/m/n/10 .transform() []\T1/ptm/m/n/10 and []\T1/zi4/m/n/10 .encode_target()[]\T1/ptm/m/n/10 . 
+[6] [7] [8] [9] [10] [11] [12] [13]
+Overfull \hbox (91.56848pt too wide) in paragraph at lines 723--726
+[]\T1/zi4/m/n/10 $train_scores\T1/ptm/m/n/10 : per-row prob-a-bil-ity of "looks like new data" for ref-er-ence rows. Use []\T1/zi4/m/n/10 sort(result$train_scores,
+[14] (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/inconsolata/ts1zi4.fd) [15{/Users/simon/Library/TinyTeX/texmf-dist/fonts/enc/dvips/inconsolata/i4-ts1.enc}] [16]
+Overfull \hbox (5.66698pt too wide) in paragraph at lines 918--921
+[]\T1/ptm/m/n/10 Tree en-sem-bles ('ran-dom_forest', 'xg-boost', 'gra-di-ent_boosting', 'de-ci-sion_tree', 'ex-tra_trees',
+
+Overfull \hbox (19.2682pt too wide) in paragraph at lines 948--951
+[]\T1/ptm/m/n/10 Trains a model us-ing cross-validation (if []\T1/zi4/m/n/10 data []\T1/ptm/m/n/10 is an []\T1/zi4/m/n/10 ml_cv_result[]\T1/ptm/m/n/10 ) or hold-out (if []\T1/zi4/m/n/10 data []\T1/ptm/m/n/10 is a []\T1/zi4/m/n/10 data.frame[]\T1/ptm/m/n/10 ).
+[17]
+Overfull \hbox (3.88731pt too wide) in paragraph at lines 974--978
+[]\T1/ptm/m/n/10 "auto" (de-fault), "lo-gis-tic", "de-ci-sion_tree", "ran-dom_forest", "ex-tra_trees", "gra-
+
+Overfull \hbox (2.06789pt too wide) in paragraph at lines 974--978
+\T1/ptm/m/n/10 di-ent_boosting", "xg-boost", "lin-ear", "elas-tic_net", "svm", "knn", "naive_bayes",
+
+Overfull \hbox (7.94891pt too wide) in paragraph at lines 990--992
+[]\T1/ptm/m/n/10 Additional hy-per-pa-ram-e-ters passed to the en-gine (e.g., []\T1/zi4/m/n/10 max_depth = 6[]\T1/ptm/m/n/10 , []\T1/zi4/m/n/10 num.trees
+[18] [19]
+Overfull \hbox (27.06044pt too wide) in paragraph at lines 1113--1115
+[]\T1/ptm/m/n/10 Plot type. One of []\T1/zi4/m/n/10 "importance"[]\T1/ptm/m/n/10 , []\T1/zi4/m/n/10 "roc"[]\T1/ptm/m/n/10 , []\T1/zi4/m/n/10 "confusion"[]\T1/ptm/m/n/10 , []\T1/zi4/m/n/10 "residual"[]\T1/ptm/m/n/10 , []\T1/zi4/m/n/10 "calibration"[]\T1/ptm/m/n/10 .
+[20] [21] [22] [23] [24] [25]
+Overfull \hbox (2.65671pt too wide) in paragraph at lines 1468--1472
+\T1/ptm/m/n/10 duces op-ti-mistic es-ti-mates. The win-ning al-go-rithm ben-e-fits from se-lec-tion bias. Use [][][]\T1/zi4/m/n/10 ml_validate()[][][]
+[26] [27]
+Overfull \hbox (12.21706pt too wide) in paragraph at lines 1565--1568
+[]\T1/ptm/m/n/10 Three-way split is the de-fault (60/20/20), fol-low-ing Hastie, Tib-shi-rani, and Fried-man (2009, ISBN:978-
+[28] [29] [30] [31] [32] [33] [34] [35] 
+
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex)
+ restricted \write18 enabled.
+entering extended mode
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-01-19>
+(./Rd2.tex
+(/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/book.cls
+Document Class: book 2025/01/22 v1.4n Standard LaTeX document class
+(/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/bk10.clo)) (/Library/Frameworks/R.framework/Resources/share/texmf/tex/latex/Rd.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/ifthen.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/iftex/iftex.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/tools/longtable.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/tools/bm.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/alltt.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/tools/verbatim.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/url/url.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/textcomp.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?' option.
+(/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amstext.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsgen.sty)) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsbsy.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsopn.sty)) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/amsfonts.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/amssymb.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/eucal.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/fontenc.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/psnfss/times.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/inconsolata/zi4.sty `inconsolata-zi4' v1.12, 2019/05/17 Text macros for Inconsolata (msharpe) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/xkeyval/xkeyval.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/xkeyval/xkeyval.tex (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/xkeyval/xkvutils.tex (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/xkeyval/keyval.tex))))) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/graphics/color.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/graphics-cfg/color.cfg) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/graphics-def/pdftex.def) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/graphics/mathcolor.ltx)) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hyperref/hyperref.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/pdfescape/pdfescape.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/infwarerr/infwarerr.sty))) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hycolor/hycolor.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hyperref/nameref.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/refcount/refcount.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/gettitlestring/gettitlestring.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/kvoptions/kvoptions.sty))) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/etoolbox/etoolbox.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/stringenc/stringenc.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hyperref/pd1enc.def) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/intcalc/intcalc.sty) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hyperref/puenc.def) (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/bitset/bitset.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty))) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/hyperref/hpdftex.def (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty (/Users/simon/Library/TinyTeX/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty)))) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/base/makeidx.sty)
+Writing index file Rd2.idx
+(/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/psnfss/t1ptm.fd) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def) (/private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/Rd2pdf11efc56a062/Rd2.aux) (/private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/Rd2pdf11efc56a062/Rd2.out) (/private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/Rd2pdf11efc56a062/Rd2.out) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/psnfss/ts1ptm.fd) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/inconsolata/t1zi4.fd) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/umsa.fd) (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd) (/private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/Rd2pdf11efc56a062/Rd2.toc [1{/Users/simon/Library/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/Users/simon/Library/TinyTeX/texmf-dist/fonts/enc/dvips/base/8r.enc}{/Users/simon/Library/TinyTeX/texmf-dist/fonts/enc/dvips/inconsolata/i4-t1-0.enc}] [2])
+ignored error: Infinite glue shrinkage found in box being split [3] [4] [5]
+Overfull \hbox (51.70702pt too wide) in paragraph at lines 253--255
+[]\T1/ptm/m/n/10 A named list (Norm-State) con-tain-ing en-cod-ing/scaling state for use with []\T1/zi4/m/n/10 .transform() []\T1/ptm/m/n/10 and []\T1/zi4/m/n/10 .encode_target()[]\T1/ptm/m/n/10 . 
+[6] [7] [8] [9] [10] [11] [12] [13]
+Overfull \hbox (91.56848pt too wide) in paragraph at lines 723--726
+[]\T1/zi4/m/n/10 $train_scores\T1/ptm/m/n/10 : per-row prob-a-bil-ity of "looks like new data" for ref-er-ence rows. Use []\T1/zi4/m/n/10 sort(result$train_scores,
+[14] (/Users/simon/Library/TinyTeX/texmf-dist/tex/latex/inconsolata/ts1zi4.fd) [15{/Users/simon/Library/TinyTeX/texmf-dist/fonts/enc/dvips/inconsolata/i4-ts1.enc}] [16]
+Overfull \hbox (5.66698pt too wide) in paragraph at lines 918--921
+[]\T1/ptm/m/n/10 Tree en-sem-bles ('ran-dom_forest', 'xg-boost', 'gra-di-ent_boosting', 'de-ci-sion_tree', 'ex-tra_trees',
+
+Overfull \hbox (19.2682pt too wide) in paragraph at lines 948--951
+[]\T1/ptm/m/n/10 Trains a model us-ing cross-validation (if []\T1/zi4/m/n/10 data []\T1/ptm/m/n/10 is an []\T1/zi4/m/n/10 ml_cv_result[]\T1/ptm/m/n/10 ) or hold-out (if []\T1/zi4/m/n/10 data []\T1/ptm/m/n/10 is a []\T1/zi4/m/n/10 data.frame[]\T1/ptm/m/n/10 ).
+[17]
+Overfull \hbox (3.88731pt too wide) in paragraph at lines 974--978
+[]\T1/ptm/m/n/10 "auto" (de-fault), "lo-gis-tic", "de-ci-sion_tree", "ran-dom_forest", "ex-tra_trees", "gra-
+
+Overfull \hbox (2.06789pt too wide) in paragraph at lines 974--978
+\T1/ptm/m/n/10 di-ent_boosting", "xg-boost", "lin-ear", "elas-tic_net", "svm", "knn", "naive_bayes",
+
+Overfull \hbox (7.94891pt too wide) in paragraph at lines 990--992
+[]\T1/ptm/m/n/10 Additional hy-per-pa-ram-e-ters passed to the en-gine (e.g., []\T1/zi4/m/n/10 max_depth = 6[]\T1/ptm/m/n/10 , []\T1/zi4/m/n/10 num.trees
+[18] [19]
+Overfull \hbox (27.06044pt too wide) in paragraph at lines 1113--1115
+[]\T1/ptm/m/n/10 Plot type. One of []\T1/zi4/m/n/10 "importance"[]\T1/ptm/m/n/10 , []\T1/zi4/m/n/10 "roc"[]\T1/ptm/m/n/10 , []\T1/zi4/m/n/10 "confusion"[]\T1/ptm/m/n/10 , []\T1/zi4/m/n/10 "residual"[]\T1/ptm/m/n/10 , []\T1/zi4/m/n/10 "calibration"[]\T1/ptm/m/n/10 .
+[20] [21] [22] [23] [24] [25]
+Overfull \hbox (2.65671pt too wide) in paragraph at lines 1468--1472
+\T1/ptm/m/n/10 duces op-ti-mistic es-ti-mates. The win-ning al-go-rithm ben-e-fits from se-lec-tion bias. Use [][][]\T1/zi4/m/n/10 ml_validate()[][][]
+[26] [27]
+Overfull \hbox (12.21706pt too wide) in paragraph at lines 1565--1568
+[]\T1/ptm/m/n/10 Three-way split is the de-fault (60/20/20), fol-low-ing Hastie, Tib-shi-rani, and Fried-man (2009, ISBN:978-
+[28] [29] [30] [31] [32] [33] [34] [35] [36] [37] [38] [39] [40] [41] [42] [43]
+No file Rd2.ind.
+[44] (/private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/Rd2pdf11efc56a062/Rd2.aux) )
+(see the transcript file for additional information)
+pdfTeX warning (dest): name{Rfn.saveRDS} has been referenced but does not exist, replaced by a fixed one
+
+</Users/simon/Library/TinyTeX/texmf-dist/fonts/type1/public/inconsolata/Inconsolata-zi4r.pfb></Users/simon/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></Users/simon/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></Users/simon/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></Users/simon/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
+Output written on Rd2.pdf (44 pages, 157300 bytes).
+Transcript written on Rd2.log.
+Saving output to ‘ml-manual.pdf’ ...
+Done
+You may want to clean up by 'rm -Rf /var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T//RtmpyDGUIg/Rd2pdf11efc56a062'

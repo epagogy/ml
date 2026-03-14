@@ -1,0 +1,52 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(testthat)
+> library(ml)
+> 
+> test_check("ml")
+-- Calibrated ml_model [classification | logistic | Platt scaling]
+Saved: /private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/working_dir/RtmptOvXI9/file14df4d1d3153.html
+Saved: /private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/working_dir/RtmptOvXI9/file14df2e3d5f8a.html
+Saved: /private/var/folders/d5/ghcjkq1j1ws83j6m7t4p1m6c0000gn/T/RtmpyDGUIg/working_dir/RtmptOvXI9/file14dfa016ce5.html
+[ FAIL 0 | WARN 257 | SKIP 47 | PASS 692 ]
+
+══ Skipped tests (47) ══════════════════════════════════════════════════════════
+• Rust backend not available (44): 'test-rust.R:15:3', 'test-rust.R:26:3',
+  'test-rust.R:38:3', 'test-rust.R:48:3', 'test-rust.R:63:3',
+  'test-rust.R:72:3', 'test-rust.R:81:3', 'test-rust.R:92:3',
+  'test-rust.R:102:3', 'test-rust.R:112:3', 'test-rust.R:124:3',
+  'test-rust.R:134:3', 'test-rust.R:155:3', 'test-rust.R:164:3',
+  'test-rust.R:173:3', 'test-rust.R:184:3', 'test-rust.R:196:3',
+  'test-rust.R:214:3', 'test-rust.R:224:3', 'test-rust.R:242:3',
+  'test-rust.R:253:3', 'test-rust.R:264:3', 'test-rust.R:277:3',
+  'test-rust.R:292:3', 'test-rust.R:310:3', 'test-rust.R:322:3',
+  'test-rust.R:333:3', 'test-rust.R:347:3', 'test-rust.R:358:3',
+  'test-rust.R:368:3', 'test-rust.R:383:3', 'test-rust.R:395:3',
+  'test-rust.R:409:3', 'test-rust.R:425:3', 'test-rust.R:438:3',
+  'test-rust.R:447:3', 'test-rust.R:463:3', 'test-rust.R:475:3',
+  'test-rust.R:487:3', 'test-rust.R:498:3', 'test-rust.R:514:3',
+  'test-rust.R:526:3', 'test-rust.R:538:3', 'test-rust.R:550:3'
+• empty test (2): 'test-parity-w3.R:163:1', 'test-screen.R:16:1'
+• logistic is clf-only — use linear for regression; tested separately (1):
+  'test-predict.R:16:3'
+
+[ FAIL 0 | WARN 257 | SKIP 47 | PASS 692 ]
+> 
+> proc.time()
+   user  system elapsed 
+  4.370   0.486   4.806 

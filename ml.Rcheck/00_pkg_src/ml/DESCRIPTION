@@ -1,0 +1,32 @@
+Package: ml
+Title: A Grammar of Machine Learning Workflows
+Version: 0.1.0
+Authors@R: person("Simon", "Roth", email = "simon@epagogy.ai", role = c("aut", "cre"))
+Description: A structured workflow for supervised learning on tabular data.
+    Core verbs encode the workflow from Hastie, Tibshirani, and Friedman
+    (2009, ISBN:978-0-387-84857-0) 'The Elements of Statistical Learning',
+    Chapter 7: split data into train, validation, and test partitions; fit
+    a model; evaluate on validation data (iterate freely); assess on test
+    data (once, final). This evaluate-assess boundary prevents data leakage
+    by design. Stratified splitting, per-fold preprocessing, and
+    deterministic seeding are handled automatically. Supports 13 algorithms
+    through optional backends ('xgboost', 'ranger', 'glmnet', 'e1071',
+    'kknn', 'naivebayes', 'rpart') and an optional compiled Rust engine.
+License: MIT + file LICENSE
+SystemRequirements: Cargo (Rust's package manager), rustc (optional)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+URL: https://github.com/epagogy/ml, https://epagogy.ai
+BugReports: https://github.com/epagogy/ml/issues
+Depends: R (>= 4.1.0)
+Imports: cli, grDevices, graphics, rlang, stats, utils
+Suggests: testthat (>= 3.0.0), withr, xgboost (>= 2.0.0), ranger,
+        rpart, e1071, kknn, glmnet, naivebayes, tm, tibble, knitr,
+        rmarkdown
+NeedsCompilation: yes
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+Packaged: 2026-03-08 18:18:22 UTC; simon
+Author: Simon Roth [aut, cre]
+Maintainer: Simon Roth <simon@epagogy.ai>

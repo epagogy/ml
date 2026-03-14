@@ -1,0 +1,279 @@
+* installing *source* package ‘ml’ ...
+** this is package ‘ml’ version ‘0.1.0’
+** using staged installation
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Warning in system2(file.path(R.home("bin"), "R"), c("CMD", "config", x),  :
+  running command ''/Library/Frameworks/R.framework/Resources/bin/R' CMD config CC' had status 2
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Warning in system2(file.path(R.home("bin"), "R"), c("CMD", "config", x),  :
+  running command ''/Library/Frameworks/R.framework/Resources/bin/R' CMD config CFLAGS' had status 2
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Warning in system2(file.path(R.home("bin"), "R"), c("CMD", "config", x),  :
+  running command ''/Library/Frameworks/R.framework/Resources/bin/R' CMD config CXX' had status 2
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Warning in system2(file.path(R.home("bin"), "R"), c("CMD", "config", x),  :
+  running command ''/Library/Frameworks/R.framework/Resources/bin/R' CMD config CXXFLAGS' had status 2
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Warning in system2(file.path(R.home("bin"), "R"), c("CMD", "config", x),  :
+  running command ''/Library/Frameworks/R.framework/Resources/bin/R' CMD config CPPFLAGS' had status 2
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Warning in system2(file.path(R.home("bin"), "R"), c("CMD", "config", x),  :
+  running command ''/Library/Frameworks/R.framework/Resources/bin/R' CMD config LDFLAGS' had status 2
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Warning in system2(file.path(R.home("bin"), "R"), c("CMD", "config", x),  :
+  running command ''/Library/Frameworks/R.framework/Resources/bin/R' CMD config FC' had status 2
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/echo", line 3, in <module>
+    from echo.main import cli
+ModuleNotFoundError: No module named 'echo'
+make: *** [print] Error 1
+Warning in system2(file.path(R.home("bin"), "R"), c("CMD", "config", x),  :
+  running command ''/Library/Frameworks/R.framework/Resources/bin/R' CMD config FCFLAGS' had status 2
+* No Rust source found -- building without Rust backend
+* Algorithms will use CRAN packages (ranger, rpart, kknn, etc.)
+** libs
+using C compiler: ‘Apple clang version 17.0.0 (clang-1700.6.3.2)’
+using SDK: ‘MacOSX26.2.sdk’
+clang -arch arm64 -std=gnu2x -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG   -I/opt/R/arm64/include    -fPIC  -falign-functions=64 -Wall -g -O2  -c entrypoint.c -o entrypoint.o
+clang -arch arm64 -std=gnu2x -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o ml.so entrypoint.o -F/Library/Frameworks/R.framework/.. -framework R
+installing to /Users/simon/Documents/epagogy/ml/ml.Rcheck/00LOCK-ml/00new/ml/libs
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+** checking absolute paths in shared objects and dynamic libraries
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (ml)

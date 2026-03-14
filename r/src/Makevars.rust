@@ -1,0 +1,18 @@
+# Makevars for building with Rust backend.
+# Copied by configure when cargo is available.
+
+RUST_SRC = $(shell cd .. && pwd)/../../al
+RUST_LIB = $(RUST_SRC)/target/release/libml_r.a
+
+# Build the Rust static library
+$(RUST_LIB):
+	cd $(RUST_SRC) && cargo build --release -p ml-r
+
+# Tell C compiler we have Rust
+PKG_CFLAGS = -DML_HAS_RUST
+
+# Link Rust static library into the R shared object
+PKG_LIBS = $(RUST_LIB) -lpthread -lm
+
+# Depend on Rust lib
+$(SHLIB): $(RUST_LIB)

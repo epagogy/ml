@@ -1,0 +1,104 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mlw"
+version = "1.1.0"
+description = "ML that works. One import, the Hastie workflow in code."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{name = "Simon Roth"}]
+keywords = ["machine-learning", "ml", "scikit-learn", "xgboost", "classification", "regression"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Education",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pandas>=2.0,<3.0",
+    "numpy>=1.24,<3.0",
+    "skops>=0.9,<2.0",
+]
+
+[project.optional-dependencies]
+sklearn = ["scikit-learn>=1.4,<2.0"]
+scipy = ["scipy>=1.10"]
+xgboost = ["xgboost>=2.0"]
+lightgbm = ["lightgbm>=4.0"]
+catboost = ["catboost>=1.2"]
+optuna = ["optuna>=3.0"]
+shap = ["shap>=0.42"]
+tabpfn = ["tabpfn>=0.1,<2.0"]
+plots = ["matplotlib>=3.5"]
+polars = ["narwhals>=1.0"]
+rust = ["ml-py>=1.0.0"]
+all = [
+    "scikit-learn>=1.4,<2.0", "scipy>=1.10",
+    "xgboost>=2.0", "lightgbm>=4.0", "catboost>=1.2",
+    "optuna>=3.0", "shap>=0.42", "narwhals>=1.0", "matplotlib>=3.5",
+]
+dev = [
+    "pytest>=7.0", "pytest-cov", "pytest-timeout>=2.0", "ruff",
+    "hypothesis>=6.0",
+    "scikit-learn>=1.4,<2.0", "scipy>=1.10",
+    "xgboost>=2.0", "lightgbm>=4.0", "optuna>=3.0",
+]
+
+[project.urls]
+Repository = "https://github.com/epagogy/ml"
+Documentation = "https://epagogy.ai"
+Changelog = "https://github.com/epagogy/ml/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "catboost_info/",
+    "dist/",
+    "*.pyml",
+    "*.ml",
+    "*.html",
+    "FRICTION_REPORT_DR_PATEL.md",
+    ".hypothesis/",
+    "notebooks/",
+    "tests/",
+    "backtest.ipynb",
+    "quickstart.ipynb",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ml"]
+artifacts = ["ml/py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short -m 'not slow' --timeout=60"
+markers = [
+    "smoke: critical path, <3s total",
+    "slow: dataset-heavy or long-running, excluded from default run",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:matplotlib",
+    "ignore::DeprecationWarning:fontTools",
+]
+norecursedirs = [".git", ".hypothesis", "__pycache__", "*.egg-info", "catboost_info"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501", "SIM102", "SIM108", "SIM116", "B905"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["I001"]

@@ -1,0 +1,137 @@
+{
+  "timestamp": "2026-02-27T00:54:03.193525+00:00",
+  "hardware": {
+    "platform": "Darwin",
+    "cpu_count": 10,
+    "ram_gb": 16.0,
+    "python": "3.9.6",
+    "is_server": false
+  },
+  "ml_version": "1.0.0",
+  "benchmarks": {
+    "tiny": {
+      "profile": {
+        "median_seconds": 0.0038,
+        "iqr_seconds": 0.0001,
+        "peak_memory_mb": 0.18,
+        "rows_per_second": 263158
+      },
+      "split": {
+        "median_seconds": 0.005,
+        "iqr_seconds": 0.0003,
+        "peak_memory_mb": 0.34,
+        "rows_per_second": 200000
+      },
+      "fit_rf_clf": {
+        "median_seconds": 0.4498,
+        "iqr_seconds": 0,
+        "peak_memory_mb": 0.48,
+        "rows_per_second": 2223
+      },
+      "fit_logistic_clf": {
+        "median_seconds": 0.016,
+        "iqr_seconds": 0,
+        "peak_memory_mb": 0.52,
+        "rows_per_second": 62500
+      },
+      "fit_rf_reg": {
+        "median_seconds": 0.5806,
+        "iqr_seconds": 0,
+        "peak_memory_mb": 0.43,
+        "rows_per_second": 1722
+      },
+      "fit_linear_reg": {
+        "median_seconds": 0.0093,
+        "iqr_seconds": 0,
+        "peak_memory_mb": 0.52,
+        "rows_per_second": 107527
+      },
+      "predict": {
+        "median_seconds": 0.0089,
+        "iqr_seconds": 0.0001,
+        "peak_memory_mb": 0.08,
+        "rows_per_second": 112360
+      },
+      "evaluate": {
+        "median_seconds": 0.0243,
+        "iqr_seconds": 0.0001,
+        "peak_memory_mb": 0.1,
+        "rows_per_second": 41152
+      },
+      "explain": {
+        "median_seconds": 0.0131,
+        "iqr_seconds": 0.0003,
+        "peak_memory_mb": 0.16,
+        "rows_per_second": 76336
+      },
+      "screen": {
+        "median_seconds": 0.6184,
+        "iqr_seconds": 0,
+        "peak_memory_mb": 1.04,
+        "rows_per_second": 1617
+      }
+    },
+    "small": {
+      "profile": {
+        "median_seconds": 0.0152,
+        "iqr_seconds": 0.0001,
+        "peak_memory_mb": 3.09,
+        "rows_per_second": 657895
+      },
+      "split": {
+        "median_seconds": 0.0135,
+        "iqr_seconds": 0.0001,
+        "peak_memory_mb": 5.6,
+        "rows_per_second": 740741
+      },
+      "fit_rf_clf": {
+        "median_seconds": 2.2301,
+        "iqr_seconds": 0,
+        "peak_memory_mb": 5.81,
+        "rows_per_second": 4484
+      },
+      "fit_logistic_clf": {
+        "median_seconds": 0.0301,
+        "iqr_seconds": 0,
+        "peak_memory_mb": 8.74,
+        "rows_per_second": 332226
+      },
+      "fit_rf_reg": {
+        "median_seconds": 7.8287,
+        "iqr_seconds": 0,
+        "peak_memory_mb": 5.81,
+        "rows_per_second": 1277
+      },
+      "fit_linear_reg": {
+        "median_seconds": 0.0212,
+        "iqr_seconds": 0,
+        "peak_memory_mb": 8.74,
+        "rows_per_second": 471698
+      },
+      "predict": {
+        "median_seconds": 0.0208,
+        "iqr_seconds": 0.0001,
+        "peak_memory_mb": 1.04,
+        "rows_per_second": 480769
+      },
+      "evaluate": {
+        "median_seconds": 0.0476,
+        "iqr_seconds": 0.0009,
+        "peak_memory_mb": 1.07,
+        "rows_per_second": 210084
+      },
+      "explain": {
+        "median_seconds": 0.0141,
+        "iqr_seconds": 0.0004,
+        "peak_memory_mb": 0.19,
+        "rows_per_second": 709220
+      },
+      "screen": {
+        "median_seconds": 1.2295,
+        "iqr_seconds": 0,
+        "peak_memory_mb": 8.98,
+        "rows_per_second": 8133
+      }
+    }
+  }
+}

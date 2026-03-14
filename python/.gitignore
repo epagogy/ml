@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.mlw
+*.ml
+.coverage
+htmlcov/
+catboost_info/
+.ipynb_checkpoints/
+
+# Hypothesis test database
+.hypothesis/

@@ -1,0 +1,10 @@
+bibentry(
+  bibtype  = "Misc",
+  title    = "A Grammar of Machine Learning Workflows",
+  author   = person("Simon", "Roth"),
+  year     = "2026",
+  doi      = "10.5281/zenodo.18905073",
+  url      = "https://doi.org/10.5281/zenodo.18905073",
+  note     = "R package version 0.1.0",
+  header   = "To cite ml in publications use:"
+)

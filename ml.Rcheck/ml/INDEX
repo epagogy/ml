@@ -1,0 +1,73 @@
+$.ml_cv_result          Access elements of a CV result
+$.ml_split_result       Access elements of a split result
+ml                      The ml module - all verbs accessed via
+                        ml$verb()
+ml_algorithms           List available ML algorithms
+ml_assess               Assess model on held-out test data (do once)
+ml_best                 Get the best model from a leaderboard
+ml_calibrate            Calibrate predicted probabilities
+ml_check                Verify bitwise reproducibility for a given
+                        dataset
+ml_check_data           Pre-flight data quality checks
+ml_compare              Compare pre-fitted models on the same data
+ml_config               Configure ml package settings
+ml_dataset              Load a built-in dataset
+ml_drift                Detect data drift between reference and new
+                        data
+ml_embed                Embed texts into numeric features
+ml_enough               Check if sample size is sufficient before
+                        training
+ml_evaluate             Evaluate model on validation data (iterate
+                        freely)
+ml_explain              Explain model via feature importance
+ml_fit                  Fit a machine learning model
+ml_leak                 Detect potential data leakage
+ml_load                 Load a model from disk
+ml_plot                 Visual diagnostics for a fitted model
+ml_predict              Predict from a fitted model (ml_predict style)
+ml_predict_proba        Predict class probabilities
+ml_prepare              Prepare data for ML: encode, impute, and scale
+ml_profile              Profile data before modeling
+ml_quick                One-call workflow: split + screen + fit +
+                        evaluate
+ml_report               Generate an HTML training report
+ml_save                 Save a model to disk
+ml_screen               Screen all algorithms on your data
+ml_shelf                Check if a model is past its shelf life
+ml_split                Split data into train/valid/test partitions or
+                        cross-validation folds
+ml_split_group          Split data with group non-overlap - no group
+                        leaks across partitions
+ml_split_temporal       Split data chronologically - no future leakage
+ml_stack                Ensemble stacking
+ml_tune                 Tune hyperparameters via random or grid search
+ml_validate             Validate model against rules and/or baseline
+predict.ml_calibrated_model
+                        Predict from a calibrated model
+predict.ml_model        Predict from a fitted model
+predict.ml_tuning_result
+                        Predict from best model in a tuning result
+print.ml_calibrated_model
+                        Print a calibrated model
+print.ml_check_report   Print a data check report
+print.ml_cv_result      Print an ml_cv_result
+print.ml_drift_result   Print ml_drift_result
+print.ml_embedder       Print ml_embedder
+print.ml_enough_result
+                        Print a sample-size sufficiency result
+print.ml_evidence       Print ml_evidence
+print.ml_explanation    Print ml_explanation
+print.ml_leaderboard    Print ml_leaderboard
+print.ml_leak_report    Print a leakage report
+print.ml_metrics        Print ml_metrics
+print.ml_model          Print an ml_model
+print.ml_prepared_data
+                        Print prepared data summary
+print.ml_profile_result
+                        Print ml_profile_result
+print.ml_shelf_result   Print ml_shelf_result
+print.ml_split_result   Print an ml_split_result
+print.ml_tuning_result
+                        Print an ml_tuning_result
+print.ml_validate_result
+                        Print ml_validate_result

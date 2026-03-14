@@ -1,0 +1,147 @@
+---
+title: "Getting Started with ml"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with ml}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE  # examples shown but not run during check (require optional deps)
+)
+```
+
+```{r setup}
+library(ml)
+```
+
+## Overview
+
+The `ml` package implements the split-fit-evaluate-assess workflow from
+Hastie, Tibshirani, and Friedman (2009), Chapter 7. The key idea: keep a
+held-out test set sacred until you are done experimenting, then assess once.
+
+**Formula interfaces are not supported.** Pass the data frame and target
+column name as a string: `ml_fit(data, "target", seed = 42)`.
+
+## Step 1: Profile your data
+
+Before modeling, understand what you have:
+
+```{r profile}
+prof <- ml_profile(iris, "Species")
+prof
+```
+
+## Step 2: Split into train/valid/test
+
+Three-way split (60/20/20). Stratified by default for classification.
+
+```{r split}
+s <- ml_split(iris, "Species", seed = 42)
+s
+```
+
+Access partitions with `$train`, `$valid`, `$test`. The `$dev` property
+combines train and valid for final retraining.
+
+## Step 3: Screen algorithms
+
+Find candidates quickly before tuning:
+
+```{r screen}
+lb <- ml_screen(s, "Species", seed = 42)
+lb
+```
+
+## Step 4: Fit and evaluate
+
+Iterate freely on the validation set:
+
+```{r fit-evaluate}
+model <- ml_fit(s$train, "Species", algorithm = "logistic", seed = 42)
+model
+
+metrics <- ml_evaluate(model, s$valid)
+metrics
+```
+
+## Step 5: Explain feature importance
+
+```{r explain}
+exp <- ml_explain(model)
+exp
+```
+
+## Step 6: Validate against rules
+
+Gate your model before final assessment:
+
+```{r validate}
+gate <- ml_validate(model,
+                    test  = s$test,
+                    rules = list(accuracy = ">0.70"))
+gate
+```
+
+## Step 7: Assess on test data (once)
+
+The final exam. Call this only when done experimenting.
+
+```{r assess}
+verdict <- ml_assess(model, test = s$test)
+verdict
+```
+
+## Step 8: Save and load
+
+```{r io, eval = FALSE}
+path <- file.path(tempdir(), "iris_model.mlr")
+ml_save(model, path)
+loaded <- ml_load(path)
+predict(loaded, s$valid)[1:5]
+```
+
+## Module-style interface
+
+All functions are also available via the `ml$verb()` pattern, which mirrors
+Python's `import ml; ml.fit(...)`:
+
+```{r module-style}
+# Identical results — pick the style you prefer
+m2 <- ml$fit(s$train, "Species", algorithm = "logistic", seed = 42)
+identical(predict(model, s$valid), predict(m2, s$valid))
+```
+
+## Regression example
+
+The same workflow applies to regression:
+
+```{r regression}
+s2   <- ml_split(mtcars, "mpg", seed = 42)
+m_rf <- ml_fit(s2$train, "mpg", seed = 42)
+ml_evaluate(m_rf, s2$valid)
+```
+
+## Available algorithms
+
+```{r algorithms}
+ml_algorithms()
+```
+
+| Algorithm | Classification | Regression | Package |
+|-----------|:-----------:|:-----------:|---------|
+| "logistic" | yes | -- | base R ('nnet') |
+| "xgboost" | yes | yes | 'xgboost' |
+| "random_forest" | yes | yes | 'ranger' |
+| "linear" (Ridge) | -- | yes | 'glmnet' |
+| "elastic_net" | -- | yes | 'glmnet' |
+| "svm" | yes | yes | 'e1071' |
+| "knn" | yes | yes | 'kknn' |
+| "naive_bayes" | yes | -- | 'naivebayes' |
+
+LightGBM support is planned for v1.1.

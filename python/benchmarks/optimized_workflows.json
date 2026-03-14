@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-02-27T00:54:04.098748+00:00",
+  "hardware": {
+    "platform": "Darwin",
+    "cpu_count": 10,
+    "ram_gb": 16.0,
+    "python": "3.9.6"
+  },
+  "ml_version": "1.0.0",
+  "workflows": {
+    "tiny": {
+      "quick": {
+        "wall_seconds": 0.527,
+        "peak_memory_mb": 2.75
+      },
+      "standard": {
+        "wall_seconds": 2.155,
+        "peak_memory_mb": 1.23
+      },
+      "power": {
+        "wall_seconds": 0.524,
+        "peak_memory_mb": 0.71
+      }
+    },
+    "small": {
+      "quick": {
+        "wall_seconds": 2.358,
+        "peak_memory_mb": 7.43
+      },
+      "standard": {
+        "wall_seconds": 3.068,
+        "peak_memory_mb": 10.61
+      },
+      "power": {
+        "wall_seconds": 2.407,
+        "peak_memory_mb": 10.44
+      }
+    }
+  }
+}

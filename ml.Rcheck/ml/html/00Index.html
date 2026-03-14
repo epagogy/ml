@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head><title>R: A Grammar of Machine Learning Workflows</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body><div class="container">
+<h1> A Grammar of Machine Learning Workflows
+<img class="toplogo" src="../../../doc/html/Rlogo.svg" alt="[R logo]">
+</h1>
+<hr>
+<div style="text-align: center;">
+<a href="../../../doc/html/packages.html"><img class="arrow" src="../../../doc/html/left.jpg" alt="[Up]"></a>
+<a href="../../../doc/html/index.html"><img class="arrow" src="../../../doc/html/up.jpg" alt="[Top]"></a>
+</div><h2>Documentation for package &lsquo;ml&rsquo; version 0.1.0</h2>
+
+<ul><li><a href="../DESCRIPTION" type="text/plain; charset=utf-8">DESCRIPTION file</a>.</li>
+<li><a href="../doc/index.html">User guides, package vignettes and other documentation.</a></li>
+<li><a href="../NEWS.md">Package NEWS</a>.</li>
+</ul>
+
+<h2>Help Pages</h2>
+
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="cash-.ml_cv_result.html">$.ml_cv_result</a></td>
+<td>Access elements of a CV result</td></tr>
+<tr><td style="width: 25%;"><a href="cash-.ml_split_result.html">$.ml_split_result</a></td>
+<td>Access elements of a split result</td></tr>
+<tr><td style="width: 25%;"><a href="ml.html">ml</a></td>
+<td>The ml module - all verbs accessed via ml$verb()</td></tr>
+<tr><td style="width: 25%;"><a href="ml_algorithms.html">ml_algorithms</a></td>
+<td>List available ML algorithms</td></tr>
+<tr><td style="width: 25%;"><a href="ml_assess.html">ml_assess</a></td>
+<td>Assess model on held-out test data (do once)</td></tr>
+<tr><td style="width: 25%;"><a href="ml_best.html">ml_best</a></td>
+<td>Get the best model from a leaderboard</td></tr>
+<tr><td style="width: 25%;"><a href="ml_calibrate.html">ml_calibrate</a></td>
+<td>Calibrate predicted probabilities</td></tr>
+<tr><td style="width: 25%;"><a href="ml_check.html">ml_check</a></td>
+<td>Verify bitwise reproducibility for a given dataset</td></tr>
+<tr><td style="width: 25%;"><a href="ml_check_data.html">ml_check_data</a></td>
+<td>Pre-flight data quality checks</td></tr>
+<tr><td style="width: 25%;"><a href="ml_compare.html">ml_compare</a></td>
+<td>Compare pre-fitted models on the same data</td></tr>
+<tr><td style="width: 25%;"><a href="ml_config.html">ml_config</a></td>
+<td>Configure ml package settings</td></tr>
+<tr><td style="width: 25%;"><a href="ml_dataset.html">ml_dataset</a></td>
+<td>Load a built-in dataset</td></tr>
+<tr><td style="width: 25%;"><a href="ml_drift.html">ml_drift</a></td>
+<td>Detect data drift between reference and new data</td></tr>
+<tr><td style="width: 25%;"><a href="ml_embed.html">ml_embed</a></td>
+<td>Embed texts into numeric features</td></tr>
+<tr><td style="width: 25%;"><a href="ml_enough.html">ml_enough</a></td>
+<td>Check if sample size is sufficient before training</td></tr>
+<tr><td style="width: 25%;"><a href="ml_evaluate.html">ml_evaluate</a></td>
+<td>Evaluate model on validation data (iterate freely)</td></tr>
+<tr><td style="width: 25%;"><a href="ml_explain.html">ml_explain</a></td>
+<td>Explain model via feature importance</td></tr>
+<tr><td style="width: 25%;"><a href="ml_fit.html">ml_fit</a></td>
+<td>Fit a machine learning model</td></tr>
+<tr><td style="width: 25%;"><a href="ml_leak.html">ml_leak</a></td>
+<td>Detect potential data leakage</td></tr>
+<tr><td style="width: 25%;"><a href="ml_load.html">ml_load</a></td>
+<td>Load a model from disk</td></tr>
+<tr><td style="width: 25%;"><a href="ml_plot.html">ml_plot</a></td>
+<td>Visual diagnostics for a fitted model</td></tr>
+<tr><td style="width: 25%;"><a href="ml_predict.html">ml_predict</a></td>
+<td>Predict from a fitted model (ml_predict style)</td></tr>
+<tr><td style="width: 25%;"><a href="ml_predict_proba.html">ml_predict_proba</a></td>
+<td>Predict class probabilities</td></tr>
+<tr><td style="width: 25%;"><a href="ml_prepare.html">ml_prepare</a></td>
+<td>Prepare data for ML: encode, impute, and scale</td></tr>
+<tr><td style="width: 25%;"><a href="ml_profile.html">ml_profile</a></td>
+<td>Profile data before modeling</td></tr>
+<tr><td style="width: 25%;"><a href="ml_quick.html">ml_quick</a></td>
+<td>One-call workflow: split + screen + fit + evaluate</td></tr>
+<tr><td style="width: 25%;"><a href="ml_report.html">ml_report</a></td>
+<td>Generate an HTML training report</td></tr>
+<tr><td style="width: 25%;"><a href="ml_save.html">ml_save</a></td>
+<td>Save a model to disk</td></tr>
+<tr><td style="width: 25%;"><a href="ml_screen.html">ml_screen</a></td>
+<td>Screen all algorithms on your data</td></tr>
+<tr><td style="width: 25%;"><a href="ml_shelf.html">ml_shelf</a></td>
+<td>Check if a model is past its shelf life</td></tr>
+<tr><td style="width: 25%;"><a href="ml_split.html">ml_split</a></td>
+<td>Split data into train/valid/test partitions or cross-validation folds</td></tr>
+<tr><td style="width: 25%;"><a href="ml_split_group.html">ml_split_group</a></td>
+<td>Split data with group non-overlap - no group leaks across partitions</td></tr>
+<tr><td style="width: 25%;"><a href="ml_split_temporal.html">ml_split_temporal</a></td>
+<td>Split data chronologically - no future leakage</td></tr>
+<tr><td style="width: 25%;"><a href="ml_stack.html">ml_stack</a></td>
+<td>Ensemble stacking</td></tr>
+<tr><td style="width: 25%;"><a href="ml_tune.html">ml_tune</a></td>
+<td>Tune hyperparameters via random or grid search</td></tr>
+<tr><td style="width: 25%;"><a href="ml_validate.html">ml_validate</a></td>
+<td>Validate model against rules and/or baseline</td></tr>
+<tr><td style="width: 25%;"><a href="predict.ml_calibrated_model.html">predict.ml_calibrated_model</a></td>
+<td>Predict from a calibrated model</td></tr>
+<tr><td style="width: 25%;"><a href="predict.ml_model.html">predict.ml_model</a></td>
+<td>Predict from a fitted model</td></tr>
+<tr><td style="width: 25%;"><a href="predict.ml_tuning_result.html">predict.ml_tuning_result</a></td>
+<td>Predict from best model in a tuning result</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_calibrated_model.html">print.ml_calibrated_model</a></td>
+<td>Print a calibrated model</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_check_report.html">print.ml_check_report</a></td>
+<td>Print a data check report</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_cv_result.html">print.ml_cv_result</a></td>
+<td>Print an ml_cv_result</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_drift_result.html">print.ml_drift_result</a></td>
+<td>Print ml_drift_result</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_embedder.html">print.ml_embedder</a></td>
+<td>Print ml_embedder</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_enough_result.html">print.ml_enough_result</a></td>
+<td>Print a sample-size sufficiency result</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_evidence.html">print.ml_evidence</a></td>
+<td>Print ml_evidence</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_explanation.html">print.ml_explanation</a></td>
+<td>Print ml_explanation</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_leaderboard.html">print.ml_leaderboard</a></td>
+<td>Print ml_leaderboard</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_leak_report.html">print.ml_leak_report</a></td>
+<td>Print a leakage report</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_metrics.html">print.ml_metrics</a></td>
+<td>Print ml_metrics</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_model.html">print.ml_model</a></td>
+<td>Print an ml_model</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_prepared_data.html">print.ml_prepared_data</a></td>
+<td>Print prepared data summary</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_profile_result.html">print.ml_profile_result</a></td>
+<td>Print ml_profile_result</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_shelf_result.html">print.ml_shelf_result</a></td>
+<td>Print ml_shelf_result</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_split_result.html">print.ml_split_result</a></td>
+<td>Print an ml_split_result</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_tuning_result.html">print.ml_tuning_result</a></td>
+<td>Print an ml_tuning_result</td></tr>
+<tr><td style="width: 25%;"><a href="print.ml_validate_result.html">print.ml_validate_result</a></td>
+<td>Print ml_validate_result</td></tr>
+</table>
+</div></body></html>

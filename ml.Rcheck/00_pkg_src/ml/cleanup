@@ -1,0 +1,4 @@
+#!/bin/sh
+
+rm -f src/Makevars src/Makevars.win
+rm -f src/*.o src/*.so src/*.dylib src/*.a

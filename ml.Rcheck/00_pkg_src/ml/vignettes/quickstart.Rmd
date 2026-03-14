@@ -1,0 +1,204 @@
+---
+title: "Getting Started with ml"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with ml}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "100%"
+)
+has_ranger <- requireNamespace("ranger", quietly = TRUE)
+```
+
+```{r setup}
+library(ml)
+```
+
+## Why another ML package?
+
+Most machine learning code leaks information from test data into training
+without anyone noticing. Preprocessing on the full dataset, repeatedly
+evaluating on a single held-out set, using the same data to select
+hyperparameters and report final performance -- each of these inflates
+reported accuracy and produces models that disappoint in production.
+
+Chapter 7 of Hastie, Tibshirani, and Friedman (2009) prescribes a strict
+separation: a **validation** set for iterating on model choices, and a
+**test** set touched exactly once for the final generalization estimate.
+The `ml` package enforces that separation at the API level.
+
+The workflow has four verbs:
+
+1. **Split** the data into train, validation, and test.
+2. **Fit** a model on training data.
+3. **Evaluate** on validation data -- repeat as often as you like.
+4. **Assess** on test data -- once, when you are done.
+
+Calling `ml_evaluate()` ten times is fine. Calling `ml_assess()` ten times
+defeats the purpose. The API makes the distinction explicit.
+
+## Profile
+
+Before modeling, understand what you have:
+
+```{r profile}
+prof <- ml_profile(iris, "Species")
+prof
+```
+
+## Split
+
+Three-way split: 60% train, 20% validation, 20% test. Classification
+targets are stratified automatically.
+
+```{r split}
+s <- ml_split(iris, "Species", seed = 42)
+s
+```
+
+The `$dev` property merges train and validation for final retraining before
+deployment. Use it only after you have settled on an algorithm and
+hyperparameters.
+
+## Screen
+
+Which algorithms work best on this data? `ml_screen()` fits every available
+algorithm and ranks them by validation performance.
+
+```{r screen, eval = has_ranger}
+lb <- ml_screen(s, "Species", seed = 42)
+lb
+```
+
+The leaderboard shows the best algorithm at the top. But the winning
+algorithm benefits from selection bias (it looked best on *this* particular
+validation set). Use `ml_validate()` on test data for trustworthy numbers.
+
+## Fit and evaluate
+
+Train a model and check it on the validation set. You can call
+`ml_evaluate()` as many times as you want -- that is the whole point of
+having a separate validation partition.
+
+```{r fit-evaluate}
+model <- ml_fit(s$train, "Species", algorithm = "logistic", seed = 42)
+model
+
+metrics <- ml_evaluate(model, s$valid)
+metrics
+```
+
+## Visual diagnostics
+
+`ml_plot()` produces base R graphics with no extra dependencies.
+
+```{r plot-importance, fig.height = 3.5}
+ml_plot(model, kind = "importance")
+```
+
+```{r plot-confusion, fig.height = 4}
+ml_plot(model, data = s$valid, kind = "confusion")
+```
+
+## Explain
+
+Feature importances normalized to sum to 1.0. For logistic regression these
+are absolute coefficient magnitudes; for tree-based models, impurity-based
+importances.
+
+```{r explain}
+ml_explain(model)
+```
+
+## Validate
+
+Gate your model before the final assessment. Define thresholds that must be
+met. If any rule fails, `$passed` is `FALSE` and the report shows which
+rules were violated.
+
+```{r validate}
+gate <- ml_validate(model,
+                    test  = s$test,
+                    rules = list(accuracy = ">0.80"))
+gate
+```
+
+## Assess (once)
+
+The test set is your final exam. Call `ml_assess()` exactly once, when you
+are done experimenting. The result is your honest generalization estimate.
+
+```{r assess}
+verdict <- ml_assess(model, test = s$test)
+verdict
+```
+
+## Drift detection
+
+When new data arrives, check whether the input distribution has shifted.
+No labels required -- this uses per-feature statistical tests.
+
+```{r drift}
+# Simulate drift: shift one feature by 2 units
+drifted <- s$test
+drifted$Sepal.Length <- drifted$Sepal.Length + 2
+
+result <- ml_drift(reference = s$train, new = drifted, target = "Species")
+result
+```
+
+## Save and load
+
+Models serialize to a compact `.mlr` format:
+
+```{r io}
+path <- file.path(tempdir(), "iris_model.mlr")
+ml_save(model, path)
+loaded <- ml_load(path)
+identical(predict(model, s$valid), predict(loaded, s$valid))
+```
+
+## Two API styles
+
+Every function is available both as `ml_verb()` (idiomatic R) and as
+`ml$verb()` (module style, mirrors the Python package):
+
+```{r module-style}
+m2 <- ml$fit(s$train, "Species", algorithm = "logistic", seed = 42)
+identical(predict(model, s$valid), predict(m2, s$valid))
+```
+
+## Regression
+
+The same workflow applies to continuous targets. The task is detected
+automatically from the target column type.
+
+```{r regression, eval = has_ranger}
+s2    <- ml_split(mtcars, "mpg", seed = 42)
+m_reg <- ml_fit(s2$train, "mpg", seed = 42)
+ml_evaluate(m_reg, s2$valid)
+```
+
+```{r regression-plot, eval = has_ranger, fig.height = 4}
+ml_plot(m_reg, data = s2$valid, kind = "residual")
+```
+
+## Available algorithms
+
+```{r algorithms}
+ml_algorithms()
+```
+
+## References
+
+Hastie, T., Tibshirani, R. and Friedman, J. (2009). *The Elements of
+Statistical Learning*, 2nd edition, Springer. Chapter 7: Model Assessment
+and Selection.
