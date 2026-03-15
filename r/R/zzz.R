@@ -6,7 +6,8 @@
 #'
 #' Note: `ml$fit(...)` and `ml_fit(...)` produce identical results.
 #'
-#' @format A locked environment with 22 verb entries.
+#' @format A locked environment with verb entries.
+#' @return A locked environment providing module-style access to all ml verbs.
 #' @examples
 #' s <- ml$split(iris, "Species", seed = 42)
 #' model <- ml$fit(s$train, "Species", seed = 42)

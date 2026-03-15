@@ -16,12 +16,12 @@ ml_optimize(model, data, metric = "f1", min_threshold = "auto")
 are rejected because they are threshold-independent.}
 
 \item{min_threshold}{Lower bound of the sweep. \code{"auto"} (default) computes
-\code{max(0.001, 1 / n_positives)} — the minimum meaningful threshold for
+\code{max(0.001, 1 / n_positives)} -- the minimum meaningful threshold for
 imbalanced data. Pass a numeric value to override.}
 }
 \value{
 An \code{ml_optimize_result} (also an \code{ml_model}). The threshold is
-baked in — every \code{ml_predict()} call uses it automatically.
+baked in -- every \code{ml_predict()} call uses it automatically.
 Inspect with \code{result$threshold}. The original model is unchanged.
 }
 \description{

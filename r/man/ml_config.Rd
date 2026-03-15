@@ -8,7 +8,8 @@ ml_config(guards = NULL)
 }
 \arguments{
 \item{guards}{Character: \code{"strict"} (default) enforces split provenance —
-all verbs reject data not produced by \code{\link[=ml_split]{ml_split()}}. \code{"off"} disables
+all verbs reject data not produced by \code{\link[=ml_split]{ml_split()}}. \code{"warn"} issues
+warnings instead of errors (useful for migration). \code{"off"} disables
 guards for exploration/education.}
 }
 \value{
@@ -20,5 +21,6 @@ to control partition enforcement.
 }
 \examples{
 ml_config(guards = "off")    # disable guards
+ml_config(guards = "warn")   # warn instead of error
 ml_config(guards = "strict") # re-enable (default)
 }

@@ -97,29 +97,25 @@ ml_drift <- function(reference, new, method = "statistical", threshold = 0.05,
 
     if (is.numeric(ref_col) && is.numeric(new_col)) {
       # KS two-sample test for numeric features
-      tryCatch({
-        res            <- stats::ks.test(ref_col[!is.na(ref_col)], new_col[!is.na(new_col)])
-        p_values[[col]]   <- res$p.value
-        test_types[[col]] <- "ks"
-      }, error = function(e) {
-        p_values[[col]]   <<- 1.0
-        test_types[[col]] <<- "ks_failed"
-      })
+      res <- tryCatch({
+        r <- stats::ks.test(ref_col[!is.na(ref_col)], new_col[!is.na(new_col)])
+        list(p = r$p.value, type = "ks")
+      }, error = function(e) list(p = 1.0, type = "ks_failed"))
+      p_values[[col]]   <- res$p
+      test_types[[col]] <- res$type
     } else {
       # Chi-squared test for categorical features
-      tryCatch({
+      res <- tryCatch({
         ref_tab <- table(factor(ref_col))
         new_tab <- table(factor(new_col, levels = names(ref_tab)))
         # Suppress warnings about low expected counts
-        res <- suppressWarnings(stats::chisq.test(
+        r <- suppressWarnings(stats::chisq.test(
           rbind(as.numeric(ref_tab), as.numeric(new_tab))
         ))
-        p_values[[col]]   <- res$p.value
-        test_types[[col]] <- "chisq"
-      }, error = function(e) {
-        p_values[[col]]   <<- 1.0
-        test_types[[col]] <<- "chisq_failed"
-      })
+        list(p = r$p.value, type = "chisq")
+      }, error = function(e) list(p = 1.0, type = "chisq_failed"))
+      p_values[[col]]   <- res$p
+      test_types[[col]] <- res$type
     }
   }
 

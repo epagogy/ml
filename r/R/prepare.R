@@ -66,8 +66,8 @@ ml_prepare <- function(data, target, algorithm = "auto", task = "auto") {
 
   norm_state  <- .prepare(X, y, algorithm = algorithm, task = detected_task)
   transformed <- .transform_fit(X, norm_state)
-  X_enc       <- transformed$X_enc
-  norm_state  <- transformed$norm_state
+  X_enc       <- transformed$X
+  norm_state  <- transformed$norm
 
   structure(
     list(

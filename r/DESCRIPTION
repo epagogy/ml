@@ -1,9 +1,7 @@
 Package: ml
 Title: Supervised Learning with Mandatory Splits and Seeds
-Version: 1.1.2
+Version: 0.1.2
 Authors@R: person("Simon", "Roth", email = "simon@epagogy.ai", role = c("aut", "cre"))
-Author: Simon Roth [aut, cre]
-Maintainer: Simon Roth <simon@epagogy.ai>
 Description: Implements the split-fit-evaluate-assess workflow from Hastie,
     Tibshirani, and Friedman (2009, ISBN:978-0-387-84857-0) "The Elements of
     Statistical Learning", Chapter 7. Provides three-way data splitting with

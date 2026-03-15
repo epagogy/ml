@@ -5,6 +5,6 @@ bibentry(
   year     = "2026",
   doi      = "10.5281/zenodo.19023838",
   url      = "https://doi.org/10.5281/zenodo.19023838",
-  note     = "R package version 0.1.1",
+  note     = paste("R package version", meta$Version),
   header   = "To cite ml in publications use:"
 )
