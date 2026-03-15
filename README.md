@@ -10,7 +10,7 @@ Split, fit, evaluate, assess — in Python and R.
 </p>
 
 <p align="center">
-  <a href="https://doi.org/10.5281/zenodo.18905073">Paper</a> ·
+  <a href="https://doi.org/10.5281/zenodo.19023838">Paper</a> ·
   <a href="https://epagogy.ai">Website</a> ·
   <a href="python/">Python</a> ·
   <a href="r/">R</a>
@@ -50,7 +50,7 @@ bundled datasets.
 ## Research
 
 Roth, S. (2026). *A Grammar of Machine Learning Workflows.*
-[doi:10.5281/zenodo.18905073](https://doi.org/10.5281/zenodo.18905073)
+[doi:10.5281/zenodo.19023838](https://doi.org/10.5281/zenodo.19023838)
 
 ## License
 
