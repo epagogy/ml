@@ -12,7 +12,7 @@ Four verbs prevent data leakage by construction. 16 algorithms, 11 Rust-native.
 </p>
 
 <p align="center">
-  <a href="https://doi.org/10.5281/zenodo.18905073">Paper</a> ·
+  <a href="https://doi.org/10.5281/zenodo.19023838">Paper</a> ·
   <a href="../r/">R</a> ·
   <a href="../al/">Rust engine</a> ·
   <a href="https://epagogy.ai">epagogy.ai</a>
@@ -111,7 +111,7 @@ forces scikit-learn fallback.
 
 ```
 Roth, S. (2026). A Grammar of Machine Learning Workflows.
-doi:10.5281/zenodo.18905073
+doi:10.5281/zenodo.19023838
 ```
 
 ## License
