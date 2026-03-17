@@ -28,8 +28,8 @@ jobs:
       - name: Build and install ml-py (Rust backend)
         run: |
           pip install maturin
-          cd al/py && maturin build --release --out dist
-          pip install al/py/dist/ml_py-*.whl
+          maturin build --release --manifest-path al/py/Cargo.toml --out dist
+          pip install dist/ml_py-*.whl
         env:
           # Override .cargo/config.toml target-cpu=native for CI portability
           RUSTFLAGS: ""
@@ -68,7 +68,7 @@ jobs:
       - name: Build ml-py wheel
         run: |
           pip install maturin
-          cd al/py && maturin build --release --out dist
+          maturin build --release --manifest-path al/py/Cargo.toml --out dist
         env:
           RUSTFLAGS: ""
 
@@ -79,7 +79,7 @@ jobs:
 
       - name: Verify both packages
         run: |
-          pip install al/py/dist/ml_py-*.whl
+          pip install dist/ml_py-*.whl
           pip install ml/python/dist/mlw-*.whl
           python -c "import ml; print(f'mlw {ml.__version__}')"
           python -c "from ml._rust import HAS_RUST; assert HAS_RUST, 'Rust not available'"
