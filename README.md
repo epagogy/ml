@@ -1,7 +1,7 @@
 # ml <a href="https://epagogy.ai"><img src="https://epagogy.ai/assets/img/hex-ml-logo.svg" align="right" width="120" alt="ml hex logo"/></a>
 
 A grammar of machine learning.
-Split, fit, evaluate, assess — in Python, R, and Julia.
+Split, fit, evaluate, assess — in Python and R.
 
 <p align="center">
   <a href="https://github.com/epagogy/ml/actions/workflows/ci.yml"><img src="https://github.com/epagogy/ml/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
@@ -13,8 +13,7 @@ Split, fit, evaluate, assess — in Python, R, and Julia.
   <a href="https://doi.org/10.5281/zenodo.19023838">Paper</a> ·
   <a href="https://epagogy.ai">Website</a> ·
   <a href="python/">Python</a> ·
-  <a href="r/">R</a> ·
-  <a href="julia/">Julia</a>
+  <a href="r/">R</a>
 </p>
 
 ---
@@ -33,7 +32,7 @@ ml.evaluate(model, s.valid)              # iterate freely
 ml.assess(model, test=s.test)            # once — second call errors
 ```
 
-Same four verbs in R (`ml_fit`, `ml_assess`) and Julia (`fit`, `assess`).
+Same four verbs in R (`ml_fit`, `ml_assess`).
 Same Rust engine underneath. Same result.
 
 ---
@@ -47,7 +46,6 @@ bundled datasets.
 |---|---|---|
 | **Python** | `pip install mlw` | [python/](python/) |
 | **R** | `remotes::install_github("epagogy/ml", subdir="r")` | [r/](r/) |
-| **Julia** | `] add ML` | [julia/](julia/) |
 
 ## Research
 
