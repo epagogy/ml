@@ -1,58 +1,174 @@
-# ml <a href="https://epagogy.ai"><img src="https://epagogy.ai/assets/img/hex-ml-logo.svg" align="right" width="120" alt="ml hex logo"/></a>
+# ml
 
-A grammar of machine learning.
-Split, fit, evaluate, assess — in Python and R.
+**A grammar of machine learning workflows.** Seven primitives. Four constraints. The evaluate/assess boundary prevents data leakage at call time.
 
-<p align="center">
-  <a href="https://github.com/epagogy/ml/actions/workflows/ci.yml"><img src="https://github.com/epagogy/ml/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-4d7e7e" alt="MIT"/></a>
-  <a href="https://epagogy.ai"><img src="https://img.shields.io/badge/_-epagogy.ai-555?style=flat&labelColor=0C0C0A&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+Cjxwb2x5Z29uIHBvaW50cz0iMjQsOCAzNy45LDE2IDM3LjksMzIgMjQsNDAgMTAuMSwzMiAxMC4xLDE2IgogICAgICAgICBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIG9wYWNpdHk9IjAuNyIvPgo8Y2lyY2xlIGN4PSIyNCIgY3k9IjI0IiByPSIxNiIKICAgICAgICBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIuNSIgb3BhY2l0eT0iMC45Ii8+Cjwvc3ZnPg==&logoColor=white" alt="epagogy.ai"/></a>
-</p>
+[![PyPI](https://img.shields.io/pypi/v/mlw?label=PyPI&color=4f46e5)](https://pypi.org/project/mlw)
+[![Python](https://img.shields.io/pypi/pyversions/mlw?label=Python)](https://pypi.org/project/mlw)
+[![R](https://img.shields.io/badge/R-%3E%3D4.1-blue)](https://github.com/epagogy/ml)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-<p align="center">
-  <a href="https://doi.org/10.5281/zenodo.19023838">Paper</a> ·
-  <a href="https://epagogy.ai">Website</a> ·
-  <a href="python/">Python</a> ·
-  <a href="r/">R</a>
-</p>
+Paper: [Roth (2026)](https://doi.org/10.5281/zenodo.19023838) | [epagogy.ai](https://epagogy.ai)
 
 ---
 
-Every ML textbook distinguishes validation from test.
-294 published papers don't ([Kapoor & Narayanan, 2023](https://doi.org/10.1016/j.patter.2023.100804)).
-ml makes the mistake inexpressible.
+## Ecosystem
+
+```
+epagogy/ml
+├── al/              Shared algorithm engine (Rust)
+│   ├── core/        11 algorithm families, pure Rust
+│   ├── py/          PyO3 bindings → pip install ml-py
+│   └── r/           extendr bindings → built by R configure
+├── ml/              ML Grammar
+│   ├── python/      pip install mlw
+│   ├── r/           library(ml)
+│   └── julia/       using ML
+└── site/            epagogy.ai
+```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design.
+
+---
+
+## Python
 
 ```python
 import ml
 
-s = ml.split(data, "churn", seed=42)
+data = ml.dataset("tips")                        # bundled — no internet needed
+s    = ml.split(data, "tip", seed=42)
 
-model = ml.fit(s.train, "churn", seed=42)
-ml.evaluate(model, s.valid)              # iterate freely
-ml.assess(model, test=s.test)            # once — second call errors
+leaderboard = ml.screen(s, "tip", seed=42)       # rank all algorithms
+model  = ml.fit(s.train, "tip", seed=42)
+ml.evaluate(model, s.valid)                       # practice exam — iterate freely
+
+final  = ml.fit(s.dev, "tip", seed=42)           # retrain on all dev data
+gate   = ml.validate(final, test=s.test)          # rules gate
+verdict = ml.assess(final, test=s.test)           # final exam — do once
+ml.save(final, "tip.mlw")
 ```
 
-Same four verbs in R (`ml_fit`, `ml_assess`).
-Same Rust engine underneath. Same result.
+```bash
+pip install mlw                  # core
+pip install "mlw[xgboost]"       # + XGBoost (recommended)
+pip install "mlw[all]"           # everything
+```
+
+> [Python package](ml/python/) · [PyPI](https://pypi.org/project/mlw)
 
 ---
 
-Beyond the core four: **screen** algorithms, **tune** hyperparameters,
-**stack** ensembles, **validate** against deployment rules, monitor
-**drift** in production. 11 Rust-native algorithms, 38 verbs, 173
-bundled datasets.
+## R
 
-| | Install | Docs |
-|---|---|---|
-| **Python** | `pip install mlw` | [python/](python/) |
-| **R** | `remotes::install_github("epagogy/ml", subdir="r")` | [r/](r/) |
+```r
+library(ml)
 
-## Research
+data   <- ml_dataset("tips")                 # bundled — no internet needed
+s      <- ml_split(data, "tip", seed = 42)
+lb     <- ml_screen(s, "tip", seed = 42)
+model  <- ml_fit(s$train, "tip", seed = 42)
+ml_evaluate(model, s$valid)
 
-Roth, S. (2026). *A Grammar of Machine Learning Workflows.*
-[doi:10.5281/zenodo.19023838](https://doi.org/10.5281/zenodo.19023838)
+final  <- ml_fit(s$dev, "tip", seed = 42)
+verdict <- ml_assess(final, test = s$test)
+```
+
+```r
+# Requires Rust toolchain + devtools (CRAN submission in progress)
+remotes::install_github("epagogy/ml", subdir = "ml/r")
+```
+
+> [R package](ml/r/) · [GitHub](https://github.com/epagogy/ml)
+
+---
+
+## Julia
+
+```julia
+using ML, DataFrames
+
+df = DataFrame(x1=randn(200), x2=randn(200), y=rand(["a","b"], 200))
+
+s = ML.split(df, "y", seed=42)
+model = ML.fit(s.train, "y", seed=42)
+ML.evaluate(model, s.valid)
+ML.assess(model, test=s.test)
+```
+
+```julia
+using Pkg
+Pkg.add(url="https://github.com/epagogy/ml", subdir="julia")
+```
+
+> [Julia package](ml/julia/)
+
+---
+
+## Algorithms
+
+11 algorithm families with a native Rust backend. Zero sklearn dependency for the default path.
+
+| Algorithm | Engine | Classification | Regression |
+|-----------|--------|:-:|:-:|
+| Random Forest | Rust | Y | Y |
+| Extra Trees | Rust | Y | Y |
+| Gradient Boosting | Rust | Y | Y |
+| Decision Tree | Rust | Y | Y |
+| Ridge / Linear | Rust | — | Y |
+| Logistic | Rust | Y | — |
+| Elastic Net | Rust | — | Y |
+| Naive Bayes | Rust | Y | — |
+| KNN | Rust | Y | Y |
+| AdaBoost | Rust | Y | — |
+| SVM | Rust | Y | Y |
+| XGBoost | optional | Y | Y |
+
+`engine="auto"` picks Rust. `engine="sklearn"` available as fallback.
+
+---
+
+## What ships
+
+| Verb | Python | R | Julia | What it does |
+|------|:------:|:-:|:-----:|--------------|
+| `split` | Y | Y | Y | Three-way split, `.dev` property |
+| `fit` | Y | Y | Y | CV + holdout, 11 algorithm families |
+| `predict` | Y | Y | Y | Labels + probabilities |
+| `evaluate` | Y | Y | Y | Practice exam — iterate freely |
+| `assess` | Y | Y | Y | Final exam — do once |
+| `explain` | Y | Y | Y | Feature importance |
+| `screen` | Y | Y | Y | Algorithm leaderboard |
+| `compare` | Y | Y | Y | Fair side-by-side |
+| `tune` | Y | Y | Y | Random / Bayesian HPO |
+| `stack` | Y | Y | Y | OOF stacking |
+| `validate` | Y | Y | Y | Rules gate |
+| `profile` | Y | Y | Y | Dataset profiling |
+| `drift` | Y | Y | Y | KS + adversarial |
+| `calibrate` | Y | Y | Y | Platt / isotonic |
+| `save` / `load` | Y | Y | Y | `.mlw` / `.mlr` |
+
+---
+
+## Why ml?
+
+**Where documentation fails, structure holds.** The evaluate/assess distinction is in every textbook and violated in 294 published papers ([Kapoor & Narayanan, 2023](https://doi.org/10.1016/j.patter.2023.100804)). The API makes the violation inexpressible.
+
+**Same contract across languages.** A Python team and an R team run the same experiment, get the same result (1e-6 tolerance). Cross-language parity is a tested invariant, not a promise.
+
+**Rust engine, no sklearn required.** 11 algorithm families in Rust via `al/`. The default `engine="auto"` path has zero sklearn dependency.
+
+---
+
+## Links
+
+- **Homepage:** [epagogy.ai](https://epagogy.ai)
+- **Paper:** [doi:10.5281/zenodo.19023838](https://doi.org/10.5281/zenodo.19023838)
+- **Python:** [pypi.org/project/mlw](https://pypi.org/project/mlw)
+- **R:** [github.com/epagogy/ml](https://github.com/epagogy/ml)
+- **Issues:** [github.com/epagogy/ml/issues](https://github.com/epagogy/ml/issues)
+
+---
 
 ## License
 
-MIT. [Simon Roth](https://epagogy.ai), 2026.
-
+MIT — [Simon Roth](https://epagogy.ai), 2026.

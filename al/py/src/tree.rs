@@ -92,7 +92,11 @@ impl PyDecisionTree {
         y: PyReadonlyArray1<f64>,
         sample_weight: Option<PyReadonlyArray1<f64>>,
     ) -> PyResult<()> {
-        let criterion = parse_criterion(&self.criterion)?;
+        // Regression always uses MSE — ignore user criterion (gini/entropy are classification-only)
+        let criterion = match self.criterion.as_str() {
+            "poisson" => Criterion::Poisson,
+            _ => Criterion::MSE,
+        };
         let (n, p) = (x.shape()[0], x.shape()[1]);
         let x_slice = x.as_slice()?;
         let y_slice = y.as_slice()?;

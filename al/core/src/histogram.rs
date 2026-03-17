@@ -685,9 +685,14 @@ impl RegHistogram {
     /// Find best MSE split by prefix-scanning bins.
     /// Returns `(best_bin, child_iw, nan_goes_left)` where lower child_iw = better.
     /// NaN samples are tried in both directions; the direction with lower cost wins.
+    ///
+    /// `split_lambda`: L2 regularization on node weight sums for GBT Newton-gain splits.
+    /// When > 0, the gain formula becomes G²/(H+λ) instead of G²/H (XGBoost-style).
+    /// Set to 0.0 for standard regression trees (no regularization in split selection).
     pub(crate) fn best_mse_split(
         &self,
         min_samples_leaf: usize,
+        split_lambda: f64,
     ) -> Option<(u8, f64, bool)> {
         let nb = self.n_bins;
 
@@ -724,6 +729,11 @@ impl RegHistogram {
             let r_swy = total_swy - l_swy;
             let r_swy2 = total_swy2 - l_swy2;
 
+            // When split_lambda > 0 (GBT Newton-gain), the gain formula becomes
+            // G²/(H+λ) instead of G²/H. This adds per-node L2 regularization
+            // to split selection, preventing deep trees from overfitting.
+            let lam = split_lambda;
+
             if !has_nan {
                 if count_left < min_samples_leaf || count_right < min_samples_leaf {
                     continue;
@@ -731,9 +741,11 @@ impl RegHistogram {
                 if l_sw < 1e-15 || r_sw < 1e-15 {
                     continue;
                 }
-                let mse_l = (l_swy2 / l_sw - (l_swy / l_sw).powi(2)).max(0.0);
-                let mse_r = (r_swy2 / r_sw - (r_swy / r_sw).powi(2)).max(0.0);
-                let child_iw = l_sw * mse_l + r_sw * mse_r;
+                let ld = l_sw + lam;
+                let rd = r_sw + lam;
+                let mse_l = (l_swy2 / ld - (l_swy / ld).powi(2)).max(0.0);
+                let mse_r = (r_swy2 / rd - (r_swy / rd).powi(2)).max(0.0);
+                let child_iw = ld * mse_l + rd * mse_r;
                 if child_iw < best_child_iw {
                     best_child_iw = child_iw;
                     best_bin = bin as u8;
@@ -748,9 +760,11 @@ impl RegHistogram {
                 let cl = count_left + self.nan_count;
                 let cr = count_right;
                 if cl >= min_samples_leaf && cr >= min_samples_leaf && nl_sw > 1e-15 && r_sw > 1e-15 {
-                    let mse_l = (nl_swy2 / nl_sw - (nl_swy / nl_sw).powi(2)).max(0.0);
-                    let mse_r = (r_swy2 / r_sw - (r_swy / r_sw).powi(2)).max(0.0);
-                    let child_iw = nl_sw * mse_l + r_sw * mse_r;
+                    let nld = nl_sw + lam;
+                    let rd = r_sw + lam;
+                    let mse_l = (nl_swy2 / nld - (nl_swy / nld).powi(2)).max(0.0);
+                    let mse_r = (r_swy2 / rd - (r_swy / rd).powi(2)).max(0.0);
+                    let child_iw = nld * mse_l + rd * mse_r;
                     if child_iw < best_child_iw {
                         best_child_iw = child_iw;
                         best_bin = bin as u8;
@@ -766,9 +780,11 @@ impl RegHistogram {
                 let cl2 = count_left;
                 let cr2 = count_right + self.nan_count;
                 if cl2 >= min_samples_leaf && cr2 >= min_samples_leaf && l_sw > 1e-15 && nr_sw > 1e-15 {
-                    let mse_l = (l_swy2 / l_sw - (l_swy / l_sw).powi(2)).max(0.0);
-                    let mse_r = (nr_swy2 / nr_sw - (nr_swy / nr_sw).powi(2)).max(0.0);
-                    let child_iw = l_sw * mse_l + nr_sw * mse_r;
+                    let ld = l_sw + lam;
+                    let nrd = nr_sw + lam;
+                    let mse_l = (l_swy2 / ld - (l_swy / ld).powi(2)).max(0.0);
+                    let mse_r = (nr_swy2 / nrd - (nr_swy / nrd).powi(2)).max(0.0);
+                    let child_iw = ld * mse_l + nrd * mse_r;
                     if child_iw < best_child_iw {
                         best_child_iw = child_iw;
                         best_bin = bin as u8;
@@ -1043,7 +1059,7 @@ mod tests {
             }
         }
 
-        let result = h.best_mse_split(1);
+        let result = h.best_mse_split(1, 0.0);
         assert!(result.is_some());
         let (best_bin, child_iw, _nan_left) = result.unwrap();
         assert_eq!(best_bin, 4, "expected split at bin 4, got {best_bin}");
@@ -1060,7 +1076,7 @@ mod tests {
         let mut h = RegHistogram::new(1);
         h.add(0, 5.0, 1.0);
         h.add(0, 6.0, 1.0);
-        assert!(h.best_mse_split(1).is_none());
+        assert!(h.best_mse_split(1, 0.0).is_none());
     }
 
     #[test]

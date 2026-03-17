@@ -161,6 +161,7 @@ impl RandomForestModel {
             extra_trees,
             monotone_cst: None, // monotone_cst not applied to classification
             min_impurity_decrease: self.min_impurity_decrease,
+            split_lambda: 0.0,
         };
         let tree_results: Vec<_> = (0..self.n_trees)
             .into_par_iter()
@@ -248,6 +249,7 @@ impl RandomForestModel {
             extra_trees,
             monotone_cst: None, // monotone_cst not applied to classification
             min_impurity_decrease: self.min_impurity_decrease,
+            split_lambda: 0.0,
         };
         let tree_results: Vec<_> = (0..self.n_trees).into_par_iter().map(|t| {
             let tree_seed = self.seed.wrapping_add(t as u64);
@@ -342,6 +344,7 @@ impl RandomForestModel {
             extra_trees,
             monotone_cst: self.monotone_cst.clone(),
             min_impurity_decrease: self.min_impurity_decrease,
+            split_lambda: 0.0,
         };
         let tree_results: Vec<_> = (0..self.n_trees)
             .into_par_iter()
@@ -429,6 +432,7 @@ impl RandomForestModel {
             extra_trees,
             monotone_cst: self.monotone_cst.clone(),
             min_impurity_decrease: self.min_impurity_decrease,
+            split_lambda: 0.0,
         };
         let tree_results: Vec<_> = (0..self.n_trees).into_par_iter().map(|t| {
             let tree_seed = self.seed.wrapping_add(t as u64);

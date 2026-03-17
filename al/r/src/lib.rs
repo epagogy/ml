@@ -582,6 +582,7 @@ fn ml_rust_gbt_fit_clf(
     reg_lambda: f64, gamma: f64, colsample_bytree: f64,
     min_child_weight: f64, n_iter_no_change: Nullable<i32>,
     validation_fraction: f64,
+    colsample_bynode: f64, scale_pos_weight: f64,
 ) -> String {
     let (n, p) = (nrow as usize, ncol as usize);
     let x_mat = DMatrix::from_column_slice(n, p, x);
@@ -596,6 +597,8 @@ fn ml_rust_gbt_fit_clf(
     model.gamma = gamma;
     model.colsample_bytree = colsample_bytree;
     model.min_child_weight = min_child_weight;
+    model.colsample_bynode = colsample_bynode;
+    model.scale_pos_weight = scale_pos_weight;
     model.n_iter_no_change = match n_iter_no_change {
         Nullable::NotNull(v) => Some(v as usize),
         Nullable::Null => None,
@@ -618,6 +621,7 @@ fn ml_rust_gbt_fit_reg(
     reg_lambda: f64, gamma: f64, colsample_bytree: f64,
     min_child_weight: f64, n_iter_no_change: Nullable<i32>,
     validation_fraction: f64,
+    colsample_bynode: f64,
 ) -> String {
     let (n, p) = (nrow as usize, ncol as usize);
     let x_mat = DMatrix::from_column_slice(n, p, x);
@@ -631,6 +635,7 @@ fn ml_rust_gbt_fit_reg(
     model.gamma = gamma;
     model.colsample_bytree = colsample_bytree;
     model.min_child_weight = min_child_weight;
+    model.colsample_bynode = colsample_bynode;
     model.n_iter_no_change = match n_iter_no_change {
         Nullable::NotNull(v) => Some(v as usize),
         Nullable::Null => None,
@@ -945,7 +950,7 @@ fn ml_rust_shuffle(n: i32, seed: i64) -> Vec<i32> {
 }
 
 /// Canonical partition sizes: (n_train, n_valid, n_test).
-/// Uses round(n * ratio) — matches Python.
+/// Uses round(n * ratio) — matches Python and Julia.
 /// @export
 #[extendr]
 fn ml_rust_partition_sizes(n: i32, train: f64, valid: f64, test: f64) -> Vec<i32> {

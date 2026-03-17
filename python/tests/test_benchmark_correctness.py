@@ -618,7 +618,9 @@ def test_golden_adaboost_clf(medium_classification):
 def test_golden_gradient_boosting_clf(medium_classification):
     """gradient_boosting binary metrics pinned (seed=42, 200 rows).
 
-    Rust Newton-leaf GBT and sklearn GradientBoosting have different defaults.
+    Rust GBT defaults matched to XGBoost (v1.2.0+): max_depth=6, lr=0.3, lambda=1.0.
+    Newton-gain split selection + λ-regularized splits + always-histogram.
+    AUC 0.894 beats XGBoost default AUC 0.884 on this fixture.
     """
     s = ml.split(data=medium_classification, target="target", seed=42)
     with warnings.catch_warnings():
@@ -626,10 +628,10 @@ def test_golden_gradient_boosting_clf(medium_classification):
         model = ml.fit(data=s.train, target="target", algorithm="gradient_boosting", seed=42)
     m = ml.evaluate(model, s.valid)
     if _is_rust_model(model):
-        assert abs(m["accuracy"] - 0.775) < 0.01
-        assert abs(m["f1"] - 0.800) < 0.01
-        assert abs(m["roc_auc"] - 0.855) < 0.01
-        assert abs(m["brier_score"] - 0.1425) < 0.01
+        assert abs(m["accuracy"] - 0.825) < 0.01
+        assert abs(m["f1"] - 0.8444) < 0.01
+        assert abs(m["roc_auc"] - 0.8939) < 0.01
+        assert abs(m["brier_score"] - 0.1196) < 0.01
     else:
         assert abs(m["accuracy"] - 0.775) < 0.05
         assert abs(m["f1"] - 0.800) < 0.05
@@ -658,6 +660,7 @@ def test_golden_histgradient_clf(medium_classification):
 
     On Rust: routes to same GBT engine as gradient_boosting (identical values).
     On sklearn: HistGradientBoosting is a separate, faster implementation.
+    XGBoost-matched defaults (v1.2.0+): max_depth=6, lr=0.3, lambda=1.0.
     """
     s = ml.split(data=medium_classification, target="target", seed=42)
     with warnings.catch_warnings():
@@ -665,10 +668,10 @@ def test_golden_histgradient_clf(medium_classification):
         model = ml.fit(data=s.train, target="target", algorithm="histgradient", seed=42)
     m = ml.evaluate(model, s.valid)
     if _is_rust_model(model):
-        assert abs(m["accuracy"] - 0.775) < 0.01
-        assert abs(m["f1"] - 0.800) < 0.01
-        assert abs(m["roc_auc"] - 0.855) < 0.01
-        assert abs(m["brier_score"] - 0.1425) < 0.01
+        assert abs(m["accuracy"] - 0.825) < 0.01
+        assert abs(m["f1"] - 0.8444) < 0.01
+        assert abs(m["roc_auc"] - 0.8939) < 0.01
+        assert abs(m["brier_score"] - 0.1196) < 0.01
     else:
         assert abs(m["accuracy"] - 0.775) < 0.05
         assert abs(m["f1"] - 0.800) < 0.05

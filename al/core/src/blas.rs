@@ -37,6 +37,23 @@ unsafe extern "C" {
         y: *mut f64,
         incy: i32,
     );
+
+    fn cblas_daxpy(
+        n: i32,
+        alpha: f64,
+        x: *const f64,
+        incx: i32,
+        y: *mut f64,
+        incy: i32,
+    );
+
+    fn cblas_ddot(
+        n: i32,
+        x: *const f64,
+        incx: i32,
+        y: *const f64,
+        incy: i32,
+    ) -> f64;
 }
 
 #[cfg(target_os = "macos")]
@@ -269,20 +286,17 @@ pub fn gemv_rm(
 
     #[cfg(not(target_os = "macos"))]
     {
+        // Iterator-based: clear aliasing → reliable auto-vectorization.
         for i in 0..n {
             let row = &a[i * p..(i + 1) * p];
-            let mut s = 0.0_f64;
-            for j in 0..p {
-                s += row[j] * x[j];
-            }
-            y[i] = s;
+            y[i] = row.iter().zip(x[..p].iter()).map(|(a, b)| a * b).sum();
         }
     }
 }
 
 /// y(p) = A^T(n×p) × x(n)  — row-major A transposed, dense x.
 ///
-/// On macOS uses Accelerate dgemv; elsewhere uses manual loop.
+/// On macOS uses Accelerate dgemv; elsewhere uses matrixmultiply dgemm.
 #[inline]
 pub fn gemv_rm_t(
     a: &[f64],
@@ -311,6 +325,7 @@ pub fn gemv_rm_t(
 
     #[cfg(not(target_os = "macos"))]
     {
+        // y = A^T × x: scatter each row's contribution (cache-friendly row access).
         for j in 0..p {
             y[j] = 0.0;
         }
@@ -321,5 +336,55 @@ pub fn gemv_rm_t(
                 y[j] += row[j] * xi;
             }
         }
+    }
+}
+
+/// y += alpha * x  — AXPY (the workhorse of coordinate descent).
+///
+/// On macOS uses Accelerate cblas_daxpy (NEON-vectorized).
+/// Elsewhere uses a simple loop that the compiler auto-vectorizes.
+#[inline]
+pub fn axpy(alpha: f64, x: &[f64], y: &mut [f64]) {
+    let n = x.len().min(y.len());
+    if n == 0 {
+        return;
+    }
+
+    #[cfg(target_os = "macos")]
+    unsafe {
+        cblas_daxpy(n as i32, alpha, x.as_ptr(), 1, y.as_mut_ptr(), 1);
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Chunk loop helps auto-vectorizer avoid aliasing concerns.
+        let xc = &x[..n];
+        let yc = &mut y[..n];
+        for (yi, xi) in yc.iter_mut().zip(xc.iter()) {
+            *yi += alpha * *xi;
+        }
+    }
+}
+
+/// dot(x, y) — inner product.
+///
+/// On macOS uses Accelerate cblas_ddot (NEON-vectorized).
+/// Elsewhere uses a simple loop that the compiler auto-vectorizes.
+#[inline]
+pub fn dot(x: &[f64], y: &[f64]) -> f64 {
+    let n = x.len().min(y.len());
+    if n == 0 {
+        return 0.0;
+    }
+
+    #[cfg(target_os = "macos")]
+    unsafe {
+        cblas_ddot(n as i32, x.as_ptr(), 1, y.as_ptr(), 1)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Iterator zip guarantees no aliasing → reliable auto-vectorization.
+        x[..n].iter().zip(y[..n].iter()).map(|(a, b)| a * b).sum()
     }
 }

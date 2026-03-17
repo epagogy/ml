@@ -7,7 +7,7 @@
 //   - Trivially auditable (< 30 lines)
 //
 // This is the SINGLE source of truth for random permutations across
-// Python and R. Same seed → same permutation, always.
+// Python, R, and Julia. Same seed → same permutation, always.
 
 /// PCG-XSH-RR 64→32 state.
 struct Pcg32 {
@@ -74,7 +74,7 @@ pub fn shuffle(n: usize, seed: u64) -> Vec<usize> {
 }
 
 /// Round to nearest, half to even (banker's rounding).
-/// Matches Python's `round()` and R's `round()`.
+/// Matches Python's `round()`, R's `round()`, and Julia's `round(Int, x)`.
 /// Uses `f64::round_ties_even()` (Rust 1.77+, IEEE 754 roundTiesToEven) —
 /// single hardware instruction, correct by construction.
 fn round_half_to_even(x: f64) -> usize {
@@ -83,7 +83,7 @@ fn round_half_to_even(x: f64) -> usize {
 
 /// Partition sizes using the canonical formula: round(n * ratio).
 /// Uses banker's rounding (half-to-even) for cross-language parity with
-/// Python and R. Remainder absorbed by the last partition.
+/// Python, R, and Julia. Remainder absorbed by the last partition.
 ///
 /// Returns (n_train, n_valid, n_test).
 pub fn partition_sizes(n: usize, ratio: [f64; 3]) -> (usize, usize, usize) {
@@ -165,7 +165,7 @@ mod tests {
         assert_eq!(perm, vec![4, 5, 9, 0, 1, 7, 8, 3, 2, 6]);
     }
 
-    /// Banker's rounding: half-to-even must match Python/R.
+    /// Banker's rounding: half-to-even must match Python/R/Julia.
     /// Rust's f64::round() would give 3 for 2.5, but banker's gives 2.
     #[test]
     fn test_partition_sizes_bankers_rounding() {

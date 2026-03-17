@@ -1,7 +1,7 @@
 //! K-Nearest Neighbors via KD-tree + vectorized brute-force.
 //!
-//! - d <= 20: balanced KD-tree, O(k log n) per query.
-//! - d > 20: batch brute-force via ||a-b||^2 = ||a||^2 + ||b||^2 - 2*a·b
+//! - d <= 24: balanced KD-tree, O(k log n) per query.
+//! - d > 24: batch brute-force via ||a-b||^2 = ||a||^2 + ||b||^2 - 2*a·b
 //!   using BLAS GEMM (Accelerate on macOS, matrixmultiply fallback).
 //!
 //! All predict paths are rayon-parallel across queries.
@@ -237,8 +237,11 @@ fn sq_norm(row: &[f64]) -> f64 {
     row.iter().map(|x| x * x).sum()
 }
 
-/// GEMM brute-force threshold: use GEMM when m*n fits in ~200MB.
-const GEMM_MAX_ELEMENTS: usize = 25_000_000;
+/// GEMM brute-force threshold: use GEMM when m*n fits in ~50MB.
+/// Reduced from 25M (200MB) to 6.25M (50MB) for better cache reuse
+/// and lower peak memory. The chunked-heap path handles larger cases
+/// with bounded memory via per-query heaps.
+const GEMM_MAX_ELEMENTS: usize = 6_250_000;
 
 /// Compute k nearest neighbor indices for each of m queries against n
 /// training points, all in d dimensions.  Returns Vec of m Vec<usize>.
@@ -469,13 +472,14 @@ fn batch_brute_heap_with_dists(
 
 /// KD-tree / brute-force crossover dimension.
 ///
-/// d <= 16: KD-tree with leaf_size (O(k log n) per query, fast at moderate dims).
-/// d > 16: BLAS GEMM brute-force (chunked for memory safety).
+/// d <= 24: KD-tree with leaf_size (O(k log n) per query, fast at moderate dims).
+/// d > 24: BLAS GEMM brute-force (chunked for memory safety).
 ///
-/// sklearn uses KD-tree up to ~30 dims. We use 16 as a conservative crossover
-/// that avoids worst-case KD-tree behavior while not falling back to brute-force
-/// too eagerly (brute-force on non-MKL BLAS is often slower).
-const KDTREE_DIM_LIMIT: usize = 16;
+/// sklearn uses KD-tree up to ~30 dims. We use 24 as a balanced crossover:
+/// KD-tree wins on real 20-30D datasets (breast cancer 30D, housing 13D),
+/// while brute-force GEMM is better above ~30D where the curse of
+/// dimensionality degrades tree pruning.
+const KDTREE_DIM_LIMIT: usize = 24;
 
 /// Number of points in a KD-tree leaf node below which we brute-force scan.
 /// Avoids deep recursion overhead; leaf scan is cache-friendly.

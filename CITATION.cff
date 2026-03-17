@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use ml in your research, please cite it as below."
 type: software
-title: "ml: A Grammar of Machine Learning Workflows"
-abstract: "Composable, reproducible, polyglot machine learning. Typed verbs covering the full Hastie workflow in Python and R with a shared Rust algorithm engine."
+title: "ml: ML that works"
+abstract: "A grammar of machine learning — composable, reproducible, polyglot. Typed verbs covering the full Hastie workflow in Python and R with a shared Rust algorithm engine."
 authors:
   - family-names: Roth
     given-names: Simon
@@ -11,23 +11,10 @@ url: "https://epagogy.ai"
 license: MIT
 version: 1.0.0
 date-released: "2026-02-26"
-doi: "10.5281/zenodo.19023838"
-preferred-citation:
-  type: article
-  title: "A Grammar of Machine Learning Workflows"
-  authors:
-    - family-names: Roth
-      given-names: Simon
-  year: 2026
-  url: "https://arxiv.org/abs/2603.10742"
-  identifiers:
-    - type: other
-      value: "arXiv:2603.10742"
 keywords:
   - machine-learning
   - tabular-data
+  - scikit-learn
   - reproducibility
-  - data-leakage
   - python
   - R
-  - rust

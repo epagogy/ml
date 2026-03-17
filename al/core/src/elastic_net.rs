@@ -151,7 +151,7 @@ impl ElasticNetModel {
         let col_norms_sq: Vec<f64> = (0..p)
             .map(|j| {
                 let col = &xw_col[j * n..(j + 1) * n];
-                col.iter().map(|&v| v * v).sum()
+                blas::dot(col, col)
             })
             .collect();
 
@@ -176,10 +176,7 @@ impl ElasticNetModel {
             for j in 0..p {
                 if coef[j] != 0.0 {
                     let col = &xw_col[j * n..(j + 1) * n];
-                    let cj = coef[j];
-                    for i in 0..n {
-                        residual[i] -= col[i] * cj;
-                    }
+                    blas::axpy(-coef[j], col, &mut residual);
                 }
             }
         }
@@ -204,13 +201,11 @@ impl ElasticNetModel {
                 let col = &xw_col[j * n..(j + 1) * n];
                 let old_coef = coef[j];
 
-                // Add back j-th contribution to residual
-                for i in 0..n {
-                    residual[i] += col[i] * old_coef;
-                }
+                // Add back j-th contribution to residual: residual += old_coef * col
+                blas::axpy(old_coef, col, &mut residual);
 
                 // rho = Xw[:, j] · residual
-                let rho: f64 = col.iter().zip(residual.iter()).map(|(&c, &r)| c * r).sum();
+                let rho = blas::dot(col, &residual);
 
                 // Soft-thresholding
                 let rho_abs = rho.abs();
@@ -225,10 +220,8 @@ impl ElasticNetModel {
                     max_update = update;
                 }
 
-                // Update residual
-                for i in 0..n {
-                    residual[i] -= col[i] * coef_new;
-                }
+                // Update residual: residual -= coef_new * col
+                blas::axpy(-coef_new, col, &mut residual);
                 coef[j] = coef_new;
             }
 
@@ -253,7 +246,7 @@ impl ElasticNetModel {
                         }
                         // KKT check for zero coefficient: |gradient| > l1_pen
                         let col = &xw_col[j * n..(j + 1) * n];
-                        let grad: f64 = col.iter().zip(residual.iter()).map(|(&c, &r)| c * r).sum();
+                        let grad: f64 = blas::dot(col, &residual);
                         if grad.abs() > l1_pen {
                             new_active.push(j);
                             kkt_violated = true;
@@ -278,7 +271,7 @@ impl ElasticNetModel {
                         }
                         // Check KKT for currently-zero coefficient
                         let col = &xw_col[j * n..(j + 1) * n];
-                        let grad: f64 = col.iter().zip(residual.iter()).map(|(&c, &r)| c * r).sum();
+                        let grad: f64 = blas::dot(col, &residual);
                         if grad.abs() > l1_pen {
                             new_active.push(j);
                         }
@@ -299,7 +292,7 @@ impl ElasticNetModel {
                             continue;
                         }
                         let col = &xw_col[j * n..(j + 1) * n];
-                        let grad: f64 = col.iter().zip(residual.iter()).map(|(&c, &r)| c * r).sum();
+                        let grad: f64 = blas::dot(col, &residual);
                         if grad.abs() > l1_pen {
                             new_active.push(j);
                         }

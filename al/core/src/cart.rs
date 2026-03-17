@@ -167,6 +167,10 @@ pub(crate) struct TreeConfig {
     pub extra_trees: bool,
     pub monotone_cst: Option<Vec<i8>>,
     pub min_impurity_decrease: f64,
+    /// L2 regularization on node weight sums for histogram MSE splits.
+    /// Used by GBT Newton-gain: gain = G²/(H+λ) instead of G²/H.
+    /// 0.0 for standard CART/RF (no regularization in split selection).
+    pub split_lambda: f64,
 }
 
 // ---------------------------------------------------------------------------
@@ -205,6 +209,8 @@ struct BuildContext<'a> {
     /// (parent_impurity - weighted_child_impurity) is below this threshold, the node
     /// becomes a leaf. Default 0.0 (no threshold).
     min_impurity_decrease: f64,
+    /// L2 regularization for histogram MSE splits (GBT Newton-gain).
+    split_lambda: f64,
     /// True when all sample weights are 1.0 (the common case). Enables fast paths that
     /// skip weight lookups and use integer counts directly.
     uniform_weights: bool,
@@ -348,6 +354,7 @@ impl DecisionTreeModel {
             extra_trees: self.extra_trees,
             monotone_cst: None, // monotone_cst not applied to classification
             min_impurity_decrease: self.min_impurity_decrease,
+            split_lambda: 0.0,
         };
 
         let (nodes, proba_pool, importance_raw) = build_tree(
@@ -425,6 +432,7 @@ impl DecisionTreeModel {
             extra_trees: self.extra_trees,
             monotone_cst: self.monotone_cst.clone(),
             min_impurity_decrease: self.min_impurity_decrease,
+            split_lambda: 0.0,
         };
 
         let (nodes, proba_pool, importance_raw) = build_tree(
@@ -656,6 +664,7 @@ fn best_split_from_hists(
     node_w: f64,
     min_samples_leaf: usize,
     criterion: Criterion,
+    split_lambda: f64,
 ) -> Option<SplitResult> {
     let p = qm.ncols;
     match hists {
@@ -705,7 +714,7 @@ fn best_split_from_hists(
             for feat in 0..p {
                 let result = match criterion {
                     Criterion::Poisson => reg_hists[feat].best_poisson_split(min_samples_leaf),
-                    _ => reg_hists[feat].best_mse_split(min_samples_leaf),
+                    _ => reg_hists[feat].best_mse_split(min_samples_leaf, split_lambda),
                 };
                 if let Some((bin, child_iw, nan_left)) = result {
                     if child_iw < best_child_iw {
@@ -823,6 +832,7 @@ pub(crate) fn build_tree(
         extra_trees: config.extra_trees,
         monotone_cst: config.monotone_cst.clone(),
         min_impurity_decrease: config.min_impurity_decrease,
+        split_lambda: config.split_lambda,
         uniform_weights,
     };
 
@@ -876,7 +886,7 @@ fn build_node(
                 let hists = precomputed.unwrap_or_else(|| {
                     build_all_hists(qm, ctx.y, &ctx.weights, indices, ctx.n_classes, ctx.is_clf)
                 });
-                let split = best_split_from_hists(&hists, qm, n_w, ctx.min_samples_leaf, ctx.criterion);
+                let split = best_split_from_hists(&hists, qm, n_w, ctx.min_samples_leaf, ctx.criterion, ctx.split_lambda);
                 parent_hists = Some(hists);
                 split
             } else {
@@ -885,6 +895,7 @@ fn build_node(
                     qm, ctx.y, &ctx.weights, indices, n_w,
                     ctx.n_classes, ctx.min_samples_leaf, ctx.is_clf,
                     ctx.max_features, &mut ctx.rng_state, ctx.criterion,
+                    ctx.split_lambda,
                 )
             }
         } else {
@@ -1377,9 +1388,12 @@ fn best_split(ctx: &mut BuildContext, indices: &[usize], node_w: f64) -> Option<
                     }
                     let n_l = count_left as f64;
                     let n_r = count_right as f64;
-                    let mse_l = (l_sy2 / n_l - (l_sy / n_l) * (l_sy / n_l)).max(0.0);
-                    let mse_r = (r_sy2 / n_r - (r_sy / n_r) * (r_sy / n_r)).max(0.0);
-                    let cost = n_l * mse_l + n_r * mse_r;
+                    let lam = ctx.split_lambda;
+                    let ld = n_l + lam;
+                    let rd = n_r + lam;
+                    let mse_l = (l_sy2 / ld - (l_sy / ld).powi(2)).max(0.0);
+                    let mse_r = (r_sy2 / rd - (r_sy / rd).powi(2)).max(0.0);
+                    let cost = ld * mse_l + rd * mse_r;
                     if cost < best_cost {
                         best_cost = cost;
                         best_feat = feat;
@@ -1472,9 +1486,12 @@ fn best_split(ctx: &mut BuildContext, indices: &[usize], node_w: f64) -> Option<
                             (cost, li, ri)
                         }
                         _ => {
-                            let mse_l = (l_swy2 / l_sw - (l_swy / l_sw) * (l_swy / l_sw)).max(0.0);
-                            let mse_r = (r_swy2 / r_sw - (r_swy / r_sw) * (r_swy / r_sw)).max(0.0);
-                            (l_sw * mse_l + r_sw * mse_r, mse_l, mse_r)
+                            let lam = ctx.split_lambda;
+                            let ld = l_sw + lam;
+                            let rd = r_sw + lam;
+                            let mse_l = (l_swy2 / ld - (l_swy / ld).powi(2)).max(0.0);
+                            let mse_r = (r_swy2 / rd - (r_swy / rd).powi(2)).max(0.0);
+                            (ld * mse_l + rd * mse_r, mse_l, mse_r)
                         }
                     };
                     if cost < best_cost {
@@ -1506,9 +1523,12 @@ fn best_split(ctx: &mut BuildContext, indices: &[usize], node_w: f64) -> Option<
                                 }
                             }
                             _ => {
-                                let mse_l = (nl_swy2 / nl_sw - (nl_swy / nl_sw) * (nl_swy / nl_sw)).max(0.0);
-                                let mse_r = (r_swy2 / r_sw - (r_swy / r_sw) * (r_swy / r_sw)).max(0.0);
-                                (nl_sw * mse_l + r_sw * mse_r, mse_l, mse_r)
+                                let lam = ctx.split_lambda;
+                                let ld = nl_sw + lam;
+                                let rd = r_sw + lam;
+                                let mse_l = (nl_swy2 / ld - (nl_swy / ld).powi(2)).max(0.0);
+                                let mse_r = (r_swy2 / rd - (r_swy / rd).powi(2)).max(0.0);
+                                (ld * mse_l + rd * mse_r, mse_l, mse_r)
                             }
                         };
                         if cost < best_cost {
@@ -1541,9 +1561,12 @@ fn best_split(ctx: &mut BuildContext, indices: &[usize], node_w: f64) -> Option<
                                 }
                             }
                             _ => {
-                                let mse_l = (l_swy2 / l_sw - (l_swy / l_sw) * (l_swy / l_sw)).max(0.0);
-                                let mse_r = (nr_swy2 / nr_sw - (nr_swy / nr_sw) * (nr_swy / nr_sw)).max(0.0);
-                                (l_sw * mse_l + nr_sw * mse_r, mse_l, mse_r)
+                                let lam = ctx.split_lambda;
+                                let ld = l_sw + lam;
+                                let rd = nr_sw + lam;
+                                let mse_l = (l_swy2 / ld - (l_swy / ld).powi(2)).max(0.0);
+                                let mse_r = (nr_swy2 / rd - (nr_swy / rd).powi(2)).max(0.0);
+                                (ld * mse_l + rd * mse_r, mse_l, mse_r)
                             }
                         };
                         if cost < best_cost {
@@ -1739,9 +1762,12 @@ fn score_threshold(
                     -l_swy * (l_swy / l_sw).ln() - r_swy * (r_swy / r_sw).ln()
                 }
                 _ => {
-                    let mse_l = (l_swy2 / l_sw - (l_swy / l_sw) * (l_swy / l_sw)).max(0.0);
-                    let mse_r = (r_swy2 / r_sw - (r_swy / r_sw) * (r_swy / r_sw)).max(0.0);
-                    l_sw * mse_l + r_sw * mse_r
+                    let lam = ctx.split_lambda;
+                    let ld = l_sw + lam;
+                    let rd = r_sw + lam;
+                    let mse_l = (l_swy2 / ld - (l_swy / ld).powi(2)).max(0.0);
+                    let mse_r = (r_swy2 / rd - (r_swy / rd).powi(2)).max(0.0);
+                    ld * mse_l + rd * mse_r
                 }
             };
             return (cost, true, true);
@@ -1766,9 +1792,12 @@ fn score_threshold(
                     } else { f64::INFINITY }
                 }
                 _ => {
-                    let mse_l = (nl_swy2 / nl_sw - (nl_swy / nl_sw) * (nl_swy / nl_sw)).max(0.0);
-                    let mse_r = (r_swy2 / r_sw - (r_swy / r_sw) * (r_swy / r_sw)).max(0.0);
-                    nl_sw * mse_l + r_sw * mse_r
+                    let lam = ctx.split_lambda;
+                    let ld = nl_sw + lam;
+                    let rd = r_sw + lam;
+                    let mse_l = (nl_swy2 / ld - (nl_swy / ld).powi(2)).max(0.0);
+                    let mse_r = (r_swy2 / rd - (r_swy / rd).powi(2)).max(0.0);
+                    ld * mse_l + rd * mse_r
                 }
             };
             if cost < best_cost { best_cost = cost; best_nan_left = true; any_valid = true; }
@@ -1788,9 +1817,12 @@ fn score_threshold(
                     } else { f64::INFINITY }
                 }
                 _ => {
-                    let mse_l = (l_swy2 / l_sw - (l_swy / l_sw) * (l_swy / l_sw)).max(0.0);
-                    let mse_r = (nr_swy2 / nr_sw - (nr_swy / nr_sw) * (nr_swy / nr_sw)).max(0.0);
-                    l_sw * mse_l + nr_sw * mse_r
+                    let lam = ctx.split_lambda;
+                    let ld = l_sw + lam;
+                    let rd = nr_sw + lam;
+                    let mse_l = (l_swy2 / ld - (l_swy / ld).powi(2)).max(0.0);
+                    let mse_r = (nr_swy2 / rd - (nr_swy / rd).powi(2)).max(0.0);
+                    ld * mse_l + rd * mse_r
                 }
             };
             if cost < best_cost { best_cost = cost; best_nan_left = false; any_valid = true; }
@@ -1891,6 +1923,7 @@ fn best_split_histogram(
     max_features: Option<usize>,
     rng_state: &mut u64,
     criterion: Criterion,
+    split_lambda: f64,
 ) -> Option<SplitResult> {
     let p = qm.ncols;
     let mut best_feat = 0;
@@ -1939,7 +1972,7 @@ fn best_split_histogram(
             }
             let result = match criterion {
                 Criterion::Poisson => hist.best_poisson_split(min_samples_leaf),
-                _ => hist.best_mse_split(min_samples_leaf),
+                _ => hist.best_mse_split(min_samples_leaf, split_lambda),
             };
             if let Some((bin, cost, nan_left)) = result {
                 if cost < best_cost {

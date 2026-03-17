@@ -1,0 +1,158 @@
+{
+  "meta": {
+    "n": 10000,
+    "p": 20,
+    "runs": 5,
+    "python": "3.12.3",
+    "sklearn": "1.8.0",
+    "numpy": "2.4.3",
+    "platform": "Linux-6.17.0-14-generic-x86_64-with-glibc2.39",
+    "cpu": "x86_64"
+  },
+  "results": [
+    {
+      "algorithm": "Decision Tree",
+      "task": "clf",
+      "ml_ms": 25.38,
+      "sk_ms": 78.32,
+      "speedup": 3.09,
+      "ml_metric": 0.92,
+      "sk_metric": 0.9125
+    },
+    {
+      "algorithm": "Random Forest",
+      "task": "clf",
+      "ml_ms": 59.29,
+      "sk_ms": 139.73,
+      "speedup": 2.36,
+      "ml_metric": 0.958,
+      "sk_metric": 0.955
+    },
+    {
+      "algorithm": "Extra Trees",
+      "task": "clf",
+      "ml_ms": 32.53,
+      "sk_ms": 80.77,
+      "speedup": 2.48,
+      "ml_metric": 0.9645,
+      "sk_metric": 0.962
+    },
+    {
+      "algorithm": "Gradient Boosting",
+      "task": "clf",
+      "ml_ms": 95.34,
+      "sk_ms": 2647.36,
+      "speedup": 27.77,
+      "ml_metric": 0.974,
+      "sk_metric": 0.9765
+    },
+    {
+      "algorithm": "AdaBoost",
+      "task": "clf",
+      "ml_ms": 175.42,
+      "sk_ms": 584.43,
+      "speedup": 3.33,
+      "ml_metric": 0.945,
+      "sk_metric": 0.945
+    },
+    {
+      "algorithm": "Logistic",
+      "task": "clf",
+      "ml_ms": 3.12,
+      "sk_ms": 2.55,
+      "speedup": 0.82,
+      "ml_metric": 0.996,
+      "sk_metric": 0.996
+    },
+    {
+      "algorithm": "KNN",
+      "task": "clf",
+      "ml_ms": 13.39,
+      "sk_ms": 10.87,
+      "speedup": 0.81,
+      "ml_metric": 0.836,
+      "sk_metric": 0.836
+    },
+    {
+      "algorithm": "Naive Bayes",
+      "task": "clf",
+      "ml_ms": 0.5,
+      "sk_ms": 1.35,
+      "speedup": 2.69,
+      "ml_metric": 0.969,
+      "sk_metric": 0.969
+    },
+    {
+      "algorithm": "SVM (linear)",
+      "task": "clf",
+      "ml_ms": 43.9,
+      "sk_ms": 9.79,
+      "speedup": 0.22,
+      "ml_metric": 0.998,
+      "sk_metric": 0.998
+    },
+    {
+      "algorithm": "Decision Tree",
+      "task": "reg",
+      "ml_ms": 36.05,
+      "sk_ms": 87.45,
+      "speedup": 2.43,
+      "ml_metric": 0.6921,
+      "sk_metric": 0.6825
+    },
+    {
+      "algorithm": "Random Forest",
+      "task": "reg",
+      "ml_ms": 251.1,
+      "sk_ms": 402.52,
+      "speedup": 1.6,
+      "ml_metric": 0.857,
+      "sk_metric": 0.8574
+    },
+    {
+      "algorithm": "Extra Trees",
+      "task": "reg",
+      "ml_ms": 97.64,
+      "sk_ms": 177.7,
+      "speedup": 1.82,
+      "ml_metric": 0.8713,
+      "sk_metric": 0.872
+    },
+    {
+      "algorithm": "Gradient Boosting",
+      "task": "reg",
+      "ml_ms": 82.4,
+      "sk_ms": 2657.26,
+      "speedup": 32.25,
+      "ml_metric": 0.8821,
+      "sk_metric": 0.8809
+    },
+    {
+      "algorithm": "Ridge",
+      "task": "reg",
+      "ml_ms": 0.22,
+      "sk_ms": 0.56,
+      "speedup": 2.58,
+      "ml_metric": 0.8927,
+      "sk_metric": 0.8927
+    },
+    {
+      "algorithm": "Elastic Net",
+      "task": "reg",
+      "ml_ms": 0.44,
+      "sk_ms": 0.45,
+      "speedup": 1.02,
+      "ml_metric": 0.3586,
+      "sk_metric": 0.3586
+    },
+    {
+      "algorithm": "KNN",
+      "task": "reg",
+      "ml_ms": 13.11,
+      "sk_ms": 6.42,
+      "speedup": 0.49,
+      "ml_metric": 0.6274,
+      "sk_metric": 0.6274
+    }
+  ]
+}

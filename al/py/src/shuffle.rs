@@ -10,7 +10,7 @@ pub fn shuffle(n: usize, seed: u64) -> Vec<usize> {
 }
 
 /// Canonical partition sizes: (n_train, n_valid, n_test).
-/// Uses round(n * ratio) — matches R.
+/// Uses round(n * ratio) — matches R and Julia.
 #[pyfunction]
 pub fn partition_sizes(n: usize, train: f64, valid: f64, test: f64) -> (usize, usize, usize) {
     ml::shuffle::partition_sizes(n, [train, valid, test])

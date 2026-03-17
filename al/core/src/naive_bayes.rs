@@ -4,11 +4,12 @@
 //!
 //! - Weighted/unweighted per-class mean + population variance.
 //! - `epsilon = var_smoothing * max(global_var_per_feature)` (sklearn convention).
-//!   Global variance is computed over ALL rows (not per-class).
+//!   Global variance derived from per-class sufficient statistics (single pass).
 //! - Log-posterior prediction with log-sum-exp normalization.
 //! - Handles `sample_weight` via weighted mean/variance.
 
 use crate::error::MlError;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Gaussian Naive Bayes classifier.
@@ -109,28 +110,19 @@ impl NaiveBayesModel {
 
         // ── Global variance for epsilon ───────────────────────────────────────
         // epsilon = var_smoothing * max(global_var_per_feature)
-        // Global variance: population variance over ALL rows (no class split).
-        let total_w: f64 = if let Some(sw) = sample_weight {
-            sw.iter().sum()
-        } else {
-            n as f64
-        };
-        let total_w = total_w.max(1e-300);
+        // Derived from per-class sufficient statistics — avoids a second O(n*p) pass.
+        let total_w: f64 = sum_w.iter().sum::<f64>().max(1e-300);
 
-        let mut global_mean = vec![0.0_f64; p];
-        let mut global_sq = vec![0.0_f64; p];
-        for i in 0..n {
-            let w = sample_weight.map_or(1.0, |sw| sw[i]);
-            let row = &x[i * p..(i + 1) * p];
-            for j in 0..p {
-                global_mean[j] += w * row[j];
-                global_sq[j] += w * row[j] * row[j];
-            }
-        }
         let mut max_global_var = 0.0_f64;
         for j in 0..p {
-            let mu = global_mean[j] / total_w;
-            let gv = (global_sq[j] / total_w - mu * mu).max(0.0);
+            let mut gm = 0.0_f64;
+            let mut gsq = 0.0_f64;
+            for c in 0..k {
+                gm += sum_wx[c * p + j];
+                gsq += sum_wx2[c * p + j];
+            }
+            let mu = gm / total_w;
+            let gv = (gsq / total_w - mu * mu).max(0.0);
             if gv > max_global_var {
                 max_global_var = gv;
             }
@@ -161,42 +153,48 @@ impl NaiveBayesModel {
 
     /// Return class probabilities for row-major X (n × p).
     /// Output: flat row-major [n * k], probabilities sum to 1.
+    ///
+    /// Parallelized across samples via rayon for large datasets.
     pub fn predict_proba(&self, x: &[f64], n: usize, p: usize) -> Vec<f64> {
         let k = self.n_classes;
-        let mut out = vec![0.0_f64; n * k];
 
-        for i in 0..n {
-            let row = &x[i * p..(i + 1) * p];
-            let log_proba = &mut out[i * k..(i + 1) * k];
+        // Pre-compute log(var) once — saves n*k*p ln() calls during prediction.
+        let log_var: Vec<f64> = self.var.iter().map(|v| v.ln()).collect();
 
-            for c in 0..k {
-                // log p(x | c) = sum_j [ -0.5 * log(2*pi*var_cj) - 0.5*(x_j - mu_cj)^2 / var_cj ]
-                //              = -0.5 * sum_j [ log(var_cj) + (x_j - mu_cj)^2 / var_cj ] + const
-                // The 0.5*log(2*pi) term is constant across all classes and cancels.
-                let theta_c = &self.theta[c * p..(c + 1) * p];
-                let var_c = &self.var[c * p..(c + 1) * p];
+        let out: Vec<f64> = (0..n)
+            .into_par_iter()
+            .flat_map_iter(|i| {
+                let row = &x[i * p..(i + 1) * p];
+                let mut log_proba = vec![0.0_f64; k];
 
-                let mut ll = self.log_prior[c];
-                for j in 0..p {
-                    let v = var_c[j];
-                    let diff = row[j] - theta_c[j];
-                    ll -= 0.5 * (v.ln() + diff * diff / v);
+                for c in 0..k {
+                    let theta_c = &self.theta[c * p..(c + 1) * p];
+                    let var_c = &self.var[c * p..(c + 1) * p];
+                    let log_var_c = &log_var[c * p..(c + 1) * p];
+
+                    let mut ll = self.log_prior[c];
+                    for j in 0..p {
+                        let diff = row[j] - theta_c[j];
+                        ll -= 0.5 * (log_var_c[j] + diff * diff / var_c[j]);
+                    }
+                    log_proba[c] = ll;
                 }
-                log_proba[c] = ll;
-            }
 
-            // Log-sum-exp normalization
-            let max_ll = log_proba.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-            let mut z = 0.0;
-            for lp in log_proba.iter_mut() {
-                *lp = (*lp - max_ll).exp();
-                z += *lp;
-            }
-            let z = z.max(1e-300);
-            for lp in log_proba.iter_mut() {
-                *lp /= z;
-            }
-        }
+                // Log-sum-exp normalization
+                let max_ll = log_proba.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                let mut z = 0.0_f64;
+                for lp in log_proba.iter_mut() {
+                    *lp = (*lp - max_ll).exp();
+                    z += *lp;
+                }
+                let z = z.max(1e-300);
+                for lp in log_proba.iter_mut() {
+                    *lp /= z;
+                }
+                log_proba
+            })
+            .collect();
+
         out
     }
 
@@ -205,6 +203,7 @@ impl NaiveBayesModel {
         let k = self.n_classes;
         let proba = self.predict_proba(x, n, p);
         (0..n)
+            .into_par_iter()
             .map(|i| {
                 let row = &proba[i * k..(i + 1) * k];
                 row.iter()

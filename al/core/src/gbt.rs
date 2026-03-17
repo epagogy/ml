@@ -45,6 +45,7 @@ fn default_one() -> f64 { 1.0 }
 fn default_validation_fraction() -> f64 { 0.1 }
 fn default_max_bin() -> usize { 254 }
 fn default_goss_min_n() -> usize { 50_000 }
+fn default_dart_rate() -> f64 { 0.0 }
 
 /// XGBoost-style L1 soft-thresholding: shrinks gradient toward zero by alpha.
 /// Returns 0 if |g| <= alpha, else g - sign(g) * alpha.
@@ -121,10 +122,15 @@ pub struct GBTModel {
     /// Minimum loss reduction for a split (XGBoost's gamma). Default 0.0.
     #[serde(default)]
     pub gamma: f64,
-    /// Column subsampling per round. Default 1.0.
-    /// Approximated via per-node max_features (exact per-round subset requires TreeConfig refactor).
+    /// Column subsampling per tree. Default 1.0 (all features).
+    /// Selects a random fraction of features at the start of each tree.
     #[serde(default = "default_one")]
     pub colsample_bytree: f64,
+    /// Column subsampling per split node. Default 1.0 (all features).
+    /// At each node, only a random fraction of features are candidates.
+    /// Stacks with colsample_bytree: effective = bytree × bynode.
+    #[serde(default = "default_one")]
+    pub colsample_bynode: f64,
     /// Minimum sum of hessians per leaf. Default 1.0.
     #[serde(default = "default_one")]
     pub min_child_weight: f64,
@@ -171,6 +177,25 @@ pub struct GBTModel {
     /// Minimum n to activate GOSS. Below this, standard subsample is used. Default 50_000.
     #[serde(default = "default_goss_min_n")]
     pub goss_min_n: usize,
+    /// Leaf smoothing: shrinks leaf values toward parent prediction.
+    /// w_smooth = G / (H + lambda + leaf_smooth). Default 0.0 (off).
+    /// Small positive values (1.0-10.0) regularize leaves with few samples.
+    #[serde(default)]
+    pub leaf_smooth: f64,
+    /// Weight multiplier for positive class in binary classification.
+    /// Useful for imbalanced datasets: set to n_negative / n_positive.
+    /// Default 1.0 (no reweighting). Only used with BinomialDeviance loss.
+    #[serde(default = "default_one")]
+    pub scale_pos_weight: f64,
+    /// DART: fraction of existing trees to drop per round (0.0 = disabled).
+    /// When > 0, dropout regularization prevents over-specialization of later trees.
+    /// Typical values: 0.05-0.3. Default 0.0 (standard GBT).
+    #[serde(default = "default_dart_rate")]
+    pub dart_rate: f64,
+    /// Per-tree scale factors (DART normalization). When dart_rate=0, all entries = learning_rate.
+    /// Length = number of trees (rounds × classes-per-round).
+    #[serde(default)]
+    tree_scales: Vec<f64>,
 }
 
 impl GBTModel {
@@ -190,7 +215,7 @@ impl GBTModel {
             min_samples_split,
             min_samples_leaf,
             subsample,
-            histogram_threshold: 4096,
+            histogram_threshold: 0, // Always use histogram splits (like XGBoost/LightGBM)
             n_features: 0,
             n_classes: 0,
             feature_importances: Vec::new(),
@@ -201,6 +226,7 @@ impl GBTModel {
             lambda: 0.0,
             gamma: 0.0,
             colsample_bytree: 1.0,
+            colsample_bynode: 1.0,
             min_child_weight: 1.0,
             n_iter_no_change: None,
             validation_fraction: 0.1,
@@ -215,6 +241,19 @@ impl GBTModel {
             goss_top_rate: 1.0,
             goss_other_rate: 1.0,
             goss_min_n: 50_000,
+            leaf_smooth: 0.0,
+            scale_pos_weight: 1.0,
+            dart_rate: 0.0,
+            tree_scales: Vec::new(),
+        }
+    }
+
+    /// Compute per-node max_features from colsample_bynode fraction.
+    fn node_max_features(&self, p: usize) -> Option<usize> {
+        if self.colsample_bynode < 1.0 {
+            Some(((p as f64 * self.colsample_bynode).ceil() as usize).max(1).min(p))
+        } else {
+            None
         }
     }
 
@@ -236,6 +275,8 @@ impl GBTModel {
         if y.len() != n {
             return Err(MlError::DimensionMismatch { expected: n, got: y.len() });
         }
+
+        let node_mf = self.node_max_features(p);
 
         self.n_features = p;
         self.n_classes = 0;
@@ -275,8 +316,39 @@ impl GBTModel {
 
         let reg_alpha = self.reg_alpha;
         let max_delta_step = self.max_delta_step;
+        let dart_rate = self.dart_rate;
+        // DART: track per-tree scale factors for dropout normalization.
+        // tree_scales[t] = effective scale (learning_rate * dart_normalization).
+        let mut tree_scales: Vec<f64> = Vec::with_capacity(self.n_estimators);
 
         for t in 0..self.n_estimators {
+            // ── DART: dropout existing trees ──────────────────────────────
+            // Drop a random subset of existing trees, recompute f_scores
+            // from only the non-dropped trees plus initial prediction.
+            let dropped: Vec<usize> = if dart_rate > 0.0 && !self.trees.is_empty() {
+                let mut rng = SimpleRng::new(self.seed.wrapping_add(t as u64).wrapping_add(0xDA47_0000));
+                let n_trees = self.trees.len();
+                let n_drop = ((n_trees as f64 * dart_rate).ceil() as usize).max(1).min(n_trees);
+                let mut indices: Vec<usize> = (0..n_trees).collect();
+                for i in 0..n_drop {
+                    let j = i + rng.gen_range(n_trees - i);
+                    indices.swap(i, j);
+                }
+                let mut drop_set: Vec<usize> = indices[..n_drop].to_vec();
+                drop_set.sort_unstable();
+                // Recompute f_scores excluding dropped trees
+                for i in 0..n { f_scores[i] = self.initial_pred[0]; }
+                for (tidx, trees_round) in self.trees.iter().enumerate() {
+                    if drop_set.binary_search(&tidx).is_ok() { continue; }
+                    let preds = trees_round[0].predict(&cm);
+                    let scale = tree_scales[tidx];
+                    for i in 0..n { f_scores[i] += scale * preds[i]; }
+                }
+                drop_set
+            } else {
+                Vec::new()
+            };
+
             // True per-tree colsample: sample feature subset once per round
             let feat_idx = sample_feature_indices(
                 p, colsample_frac,
@@ -300,7 +372,7 @@ impl GBTModel {
                         self.max_depth, self.min_samples_split, self.min_samples_leaf,
                         self.seed.wrapping_add(t as u64), feat_idx.as_deref(),
                         self.lambda, reg_alpha, self.gamma, self.min_child_weight,
-                        max_delta_step, self.max_leaves, p,
+                        max_delta_step, self.max_leaves, p, self.leaf_smooth,
                     );
                     (t, Some(la))
                 }
@@ -310,14 +382,16 @@ impl GBTModel {
                         self.max_depth, self.min_samples_split, self.min_samples_leaf,
                         self.histogram_threshold, self.seed.wrapping_add(t as u64),
                         feat_idx.as_deref(), self.monotone_cst.as_deref(), self.max_bin,
+                        self.lambda, node_mf,
                     );
                     // Apply lambda/alpha/min_child_weight via Newton update on L2 pseudo-gradients.
                     // For L2: gradient_i = residual_i = (y_i - F_i), hessian_i = 1.0.
-                    if self.lambda > 0.0 || self.gamma > 0.0 || self.min_child_weight > 1.0 || reg_alpha > 0.0 || max_delta_step > 0.0 {
+                    if self.lambda > 0.0 || self.gamma > 0.0 || self.min_child_weight > 1.0 || reg_alpha > 0.0 || max_delta_step > 0.0 || self.leaf_smooth > 0.0 {
                         let hessians = vec![1.0_f64; n];
                         let (mut g_sums, mut h_sums) = newton_leaf_update(
                             &mut tree.nodes, &residuals, &hessians, &cm,
                             self.lambda, reg_alpha, self.min_child_weight, max_delta_step,
+                            self.leaf_smooth,
                         );
                         if self.gamma > 0.0 {
                             propagate_sums_up(&tree.nodes, &mut g_sums, &mut h_sums);
@@ -328,16 +402,40 @@ impl GBTModel {
                 }
             };
             let lr = self.learning_rate;
+            // DART normalization: new tree gets scale lr/(k+1), dropped trees get k/(k+1).
+            // When dart_rate=0 (standard GBT), k=0 so new tree scale = lr, matching vanilla.
+            let k_dropped = dropped.len();
+            let new_tree_scale = if k_dropped > 0 {
+                lr / (k_dropped as f64 + 1.0)
+            } else {
+                lr
+            };
+            // Rescale dropped trees
+            if k_dropped > 0 {
+                let shrink = k_dropped as f64 / (k_dropped as f64 + 1.0);
+                for &tidx in &dropped {
+                    tree_scales[tidx] *= shrink;
+                }
+                // Recompute f_scores from all trees (including rescaled dropped + new)
+                for i in 0..n { f_scores[i] = self.initial_pred[0]; }
+                for (tidx, trees_round) in self.trees.iter().enumerate() {
+                    let preds = trees_round[0].predict(&cm);
+                    let scale = tree_scales[tidx];
+                    for i in 0..n { f_scores[i] += scale * preds[i]; }
+                }
+            }
+            // Add new tree contribution
             if let Some(assignments) = leaf_assignments_opt {
                 for i in 0..n {
                     if let NodeKind::Leaf { value, .. } = tree.nodes[assignments[i]].kind {
-                        f_scores[i] += lr * value;
+                        f_scores[i] += new_tree_scale * value;
                     }
                 }
             } else {
                 let preds = tree.predict(&cm);
-                for i in 0..n { f_scores[i] += lr * preds[i]; }
+                for i in 0..n { f_scores[i] += new_tree_scale * preds[i]; }
             }
+            tree_scales.push(new_tree_scale);
             // Lossguide importances are already in global feature space (length p);
             // depthwise importances are in projected space and need remapping via feat_idx.
             let imp_feat_idx = if self.grow_policy == GrowPolicy::Lossguide { None } else { feat_idx.as_deref() };
@@ -367,7 +465,9 @@ impl GBTModel {
             let nr = best_round + 1;
             self.best_n_rounds = Some(nr);
             self.trees.truncate(nr);
+            tree_scales.truncate(nr);
         }
+        self.tree_scales = tree_scales;
 
         let n_rounds = self.trees.len().max(1) as f64;
         for v in &mut imp_acc { *v /= n_rounds; }
@@ -424,6 +524,7 @@ impl GBTModel {
         self.loss = GBTLoss::BinomialDeviance;
         let y_f64: Vec<f64> = y_idx.iter().map(|&c| c as f64).collect();
         let colsample_frac = self.colsample_bytree;
+        let node_mf = self.node_max_features(p);
 
         // Early stopping: create validation mask
         let (val_indices, effective_base_w) = if self.n_iter_no_change.is_some() {
@@ -454,6 +555,7 @@ impl GBTModel {
         let mut f_scores: Vec<f64> = vec![init; n];
         let mut imp_acc = vec![0.0_f64; p];
         self.trees = Vec::with_capacity(self.n_estimators);
+        let mut tree_scales: Vec<f64> = Vec::with_capacity(self.n_estimators);
 
         let mut best_val_loss = f64::INFINITY;
         let mut best_round: usize = 0;
@@ -461,18 +563,47 @@ impl GBTModel {
 
         let reg_alpha = self.reg_alpha;
         let max_delta_step = self.max_delta_step;
+        let dart_rate = self.dart_rate;
 
         for t in 0..self.n_estimators {
+            // DART: drop fraction of existing trees, recompute f_scores from non-dropped.
+            let dropped: Vec<usize> = if dart_rate > 0.0 && !self.trees.is_empty() {
+                let mut rng = SimpleRng::new(self.seed.wrapping_add(t as u64).wrapping_add(0xDA47_0000));
+                let nt = self.trees.len();
+                let n_drop = ((nt as f64 * dart_rate).ceil() as usize).max(1).min(nt);
+                let mut indices: Vec<usize> = (0..nt).collect();
+                for i in 0..n_drop {
+                    let j = i + rng.gen_range(nt - i);
+                    indices.swap(i, j);
+                }
+                let dropped_set: Vec<usize> = indices[..n_drop].to_vec();
+                // Recompute f_scores from non-dropped trees only
+                for i in 0..n { f_scores[i] = init; }
+                for (tidx, trees_round) in self.trees.iter().enumerate() {
+                    if !dropped_set.contains(&tidx) {
+                        let preds = trees_round[0].predict(cm);
+                        let scale = tree_scales[tidx];
+                        for i in 0..n { f_scores[i] += scale * preds[i]; }
+                    }
+                }
+                dropped_set
+            } else {
+                Vec::new()
+            };
+
             // True per-tree colsample: sample feature subset once per round
             let feat_idx = sample_feature_indices(
                 p, colsample_frac,
                 self.seed.wrapping_add(t as u64).wrapping_add(0x_CAFE_0000),
             );
             // Phase 2: single loop — sigmoid(F) called once per sample per round.
-            // 500 rounds × 9000 samples × 2 exp() → 1 exp() halves transcendental cost.
+            // scale_pos_weight: multiply positive-class gradient+hessian by weight factor
+            // (equivalent to reweighting loss for class imbalance).
+            let spw = self.scale_pos_weight;
             let (residuals, hessians): (Vec<f64>, Vec<f64>) = (0..n).map(|i| {
                 let s = sigmoid(f_scores[i]);
-                (y_f64[i] - s, s * (1.0 - s))
+                let w = if y_f64[i] > 0.5 { spw } else { 1.0 };
+                (w * (y_f64[i] - s), w * s * (1.0 - s))
             }).unzip();
             let sub_seed = self.seed ^ (t as u64).wrapping_mul(1_000_003);
             let weights = if self.goss_top_rate < 1.0 && n >= self.goss_min_n {
@@ -489,20 +620,43 @@ impl GBTModel {
                         self.max_depth, self.min_samples_split, self.min_samples_leaf,
                         self.seed.wrapping_add(t as u64), feat_idx.as_deref(),
                         self.lambda, reg_alpha, self.gamma, self.min_child_weight,
-                        max_delta_step, self.max_leaves, p,
+                        max_delta_step, self.max_leaves, p, self.leaf_smooth,
                     );
                     (t, Some(la))
                 }
                 GrowPolicy::Depthwise => {
+                    // Newton-gain tree building for classification (no monotone constraints):
+                    // targets = g_i / h_i, weights = w_i * h_i
+                    // MSE on (g/h, w*h) ∝ Newton gain for split selection.
+                    // When monotone constraints are active, use raw gradients to preserve
+                    // monotone enforcement in the CART builder.
+                    let use_newton = self.monotone_cst.is_none();
+                    let (tree_targets, tree_weights) = if use_newton {
+                        let (nt, nw): (Vec<f64>, Vec<f64>) = (0..n)
+                            .map(|i| {
+                                let h = hessians[i].max(1e-15);
+                                (residuals[i] / h, weights[i] * h)
+                            })
+                            .unzip();
+                        (nt, nw)
+                    } else {
+                        (residuals.clone(), weights.clone())
+                    };
+                    // When Newton-gain is active, pass lambda to split selection
+                    // so gain = G²/(H+λ) instead of G²/H (XGBoost-style regularized splits).
+                    let sl = if use_newton { self.lambda } else { 0.0 };
                     let mut tree = fit_regression_tree_subset(
-                        cm, &residuals, weights, qm.as_ref(),
+                        cm, &tree_targets, tree_weights, qm.as_ref(),
                         self.max_depth, self.min_samples_split, self.min_samples_leaf,
                         self.histogram_threshold, self.seed.wrapping_add(t as u64),
                         feat_idx.as_deref(), self.monotone_cst.as_deref(), self.max_bin,
+                        sl, node_mf,
                     );
+                    // Newton leaf update: recomputes leaf values as sum(g)/(sum(h)+lambda).
                     let (mut g_sums, mut h_sums) = newton_leaf_update(
                         &mut tree.nodes, &residuals, &hessians, cm,
                         self.lambda, reg_alpha, self.min_child_weight, max_delta_step,
+                        self.leaf_smooth,
                     );
                     if self.gamma > 0.0 {
                         propagate_sums_up(&tree.nodes, &mut g_sums, &mut h_sums);
@@ -512,16 +666,39 @@ impl GBTModel {
                 }
             };
             let lr = self.learning_rate;
+            // DART normalization for binary clf
+            let k_dropped = dropped.len();
+            let new_tree_scale = if k_dropped > 0 {
+                lr / (k_dropped as f64 + 1.0)
+            } else {
+                lr
+            };
+            // Rescale dropped trees
+            if k_dropped > 0 {
+                let shrink = k_dropped as f64 / (k_dropped as f64 + 1.0);
+                for &tidx in &dropped {
+                    tree_scales[tidx] *= shrink;
+                }
+                // Recompute f_scores from all trees (including rescaled dropped + new)
+                for i in 0..n { f_scores[i] = init; }
+                for (tidx, trees_round) in self.trees.iter().enumerate() {
+                    let preds = trees_round[0].predict(cm);
+                    let scale = tree_scales[tidx];
+                    for i in 0..n { f_scores[i] += scale * preds[i]; }
+                }
+            }
+            // Add new tree contribution
             if let Some(assignments) = leaf_assignments_opt {
                 for i in 0..n {
                     if let NodeKind::Leaf { value, .. } = tree.nodes[assignments[i]].kind {
-                        f_scores[i] += lr * value;
+                        f_scores[i] += new_tree_scale * value;
                     }
                 }
             } else {
                 let preds = tree.predict(cm);
-                for i in 0..n { f_scores[i] += lr * preds[i]; }
+                for i in 0..n { f_scores[i] += new_tree_scale * preds[i]; }
             }
+            tree_scales.push(new_tree_scale);
             let imp_feat_idx = if self.grow_policy == GrowPolicy::Lossguide { None } else { feat_idx.as_deref() };
             accumulate_importances(&mut imp_acc, &tree.feature_importances, imp_feat_idx);
             self.trees.push(vec![tree]);
@@ -550,7 +727,9 @@ impl GBTModel {
             let nr = best_round + 1;
             self.best_n_rounds = Some(nr);
             self.trees.truncate(nr);
+            tree_scales.truncate(nr);
         }
+        self.tree_scales = tree_scales;
 
         let n_rounds = self.trees.len().max(1) as f64;
         for v in &mut imp_acc { *v /= n_rounds; }
@@ -569,6 +748,7 @@ impl GBTModel {
         p: usize,
     ) -> Result<&mut Self, MlError> {
         self.loss = GBTLoss::MultinomialDeviance;
+        let node_mf = self.node_max_features(p);
 
         // Early stopping: create validation mask
         let (val_indices, effective_base_w) = if self.n_iter_no_change.is_some() {
@@ -615,12 +795,44 @@ impl GBTModel {
         let max_bin = self.max_bin;
         let grow_policy = self.grow_policy;
         let max_leaves = self.max_leaves;
+        let leaf_smooth = self.leaf_smooth;
+        let dart_rate = self.dart_rate;
+        let mut tree_scales: Vec<f64> = Vec::with_capacity(self.n_estimators);
 
         let mut best_val_loss = f64::INFINITY;
         let mut best_round: usize = 0;
         let mut rounds_no_improve: usize = 0;
 
         for t in 0..self.n_estimators {
+            // DART: drop fraction of existing rounds, recompute f_scores
+            let dropped: Vec<usize> = if dart_rate > 0.0 && !self.trees.is_empty() {
+                let mut rng = SimpleRng::new(seed.wrapping_add(t as u64).wrapping_add(0xDA47_0000));
+                let nt = self.trees.len();
+                let n_drop = ((nt as f64 * dart_rate).ceil() as usize).max(1).min(nt);
+                let mut indices: Vec<usize> = (0..nt).collect();
+                for i in 0..n_drop {
+                    let j = i + rng.gen_range(nt - i);
+                    indices.swap(i, j);
+                }
+                let dropped_set: Vec<usize> = indices[..n_drop].to_vec();
+                // Recompute f_scores from non-dropped rounds only
+                for i in 0..n {
+                    for c in 0..k { f_scores[i][c] = 0.0; }
+                }
+                for (tidx, trees_round) in self.trees.iter().enumerate() {
+                    if !dropped_set.contains(&tidx) {
+                        let scale = tree_scales[tidx];
+                        for c in 0..k {
+                            let preds = trees_round[c].predict(cm);
+                            for i in 0..n { f_scores[i][c] += scale * preds[i]; }
+                        }
+                    }
+                }
+                dropped_set
+            } else {
+                Vec::new()
+            };
+
             // True per-tree colsample: all k class trees share the same feature subset per round
             let feat_idx = sample_feature_indices(
                 p, colsample_frac,
@@ -677,19 +889,37 @@ impl GBTModel {
                                 cm, &residuals_c, &hessians_c, weights, qm.as_ref(),
                                 max_depth, min_ss, min_sl, tree_seed, feat_idx_ref,
                                 lambda, reg_alpha, gamma, min_child_weight,
-                                max_delta_step, max_leaves, p,
+                                max_delta_step, max_leaves, p, leaf_smooth,
                             );
                             (t, Some(la))
                         }
                         GrowPolicy::Depthwise => {
+                            // Newton-gain tree building for classification:
+                            // targets = g_i / h_i, weights = w_i * h_i
+                            // When monotone constraints active, use raw gradients.
+                            let use_newton = monotone_cst_ref.is_none();
+                            let (tree_targets, tree_weights) = if use_newton {
+                                let (nt, nw): (Vec<f64>, Vec<f64>) = (0..n)
+                                    .map(|i| {
+                                        let h = hessians_c[i].max(1e-15);
+                                        (residuals_c[i] / h, weights[i] * h)
+                                    })
+                                    .unzip();
+                                (nt, nw)
+                            } else {
+                                (residuals_c.clone(), weights.clone())
+                            };
+                            let sl = if use_newton { lambda } else { 0.0 };
                             let mut tree = fit_regression_tree_subset(
-                                cm, &residuals_c, weights, qm.as_ref(),
+                                cm, &tree_targets, tree_weights, qm.as_ref(),
                                 max_depth, min_ss, min_sl, hist_thresh, tree_seed,
                                 feat_idx_ref, monotone_cst_ref, max_bin,
+                                sl, node_mf,
                             );
                             let (mut g_sums, mut h_sums) = newton_leaf_update(
                                 &mut tree.nodes, &residuals_c, &hessians_c, cm,
                                 lambda, reg_alpha, min_child_weight, max_delta_step,
+                                leaf_smooth,
                             );
                             if gamma > 0.0 {
                                 propagate_sums_up(&tree.nodes, &mut g_sums, &mut h_sums);
@@ -702,19 +932,44 @@ impl GBTModel {
                     (c, tree, leaf_assignments_opt, imps)
                 }).collect();
 
+            // DART normalization for multiclass
+            let k_dropped = dropped.len();
+            let new_tree_scale = if k_dropped > 0 {
+                lr / (k_dropped as f64 + 1.0)
+            } else {
+                lr
+            };
+            // Rescale dropped rounds
+            if k_dropped > 0 {
+                let shrink = k_dropped as f64 / (k_dropped as f64 + 1.0);
+                for &tidx in &dropped {
+                    tree_scales[tidx] *= shrink;
+                }
+                // Recompute f_scores from all rounds (rescaled dropped + existing)
+                for i in 0..n {
+                    for c in 0..k { f_scores[i][c] = 0.0; }
+                }
+                for (tidx, trees_round) in self.trees.iter().enumerate() {
+                    let scale = tree_scales[tidx];
+                    for c in 0..k {
+                        let preds = trees_round[c].predict(cm);
+                        for i in 0..n { f_scores[i][c] += scale * preds[i]; }
+                    }
+                }
+            }
+
             // Sequential update of f_scores and importances — no data race.
-            // Pre-allocate with None, fill by class index, then unwrap.
             let mut round_trees: Vec<Option<GBTTree>> = (0..k).map(|_| None).collect();
             for (c, tree, leaf_assignments_opt, imps) in round_data {
                 if let Some(assignments) = leaf_assignments_opt {
                     for i in 0..n {
                         if let NodeKind::Leaf { value, .. } = tree.nodes[assignments[i]].kind {
-                            f_scores[i][c] += lr * value;
+                            f_scores[i][c] += new_tree_scale * value;
                         }
                     }
                 } else {
                     let preds = tree.predict(cm);
-                    for i in 0..n { f_scores[i][c] += lr * preds[i]; }
+                    for i in 0..n { f_scores[i][c] += new_tree_scale * preds[i]; }
                 }
                 let imp_feat_idx = if grow_policy == GrowPolicy::Lossguide { None } else { feat_idx_ref };
                 accumulate_importances(&mut imp_acc, &imps, imp_feat_idx);
@@ -724,6 +979,7 @@ impl GBTModel {
                 .into_iter()
                 .map(|t| t.expect("GBT multiclass: tree not fit for class"))
                 .collect();
+            tree_scales.push(new_tree_scale);
             self.trees.push(round_trees);
 
             // Early stopping check
@@ -750,7 +1006,9 @@ impl GBTModel {
             let nr = best_round + 1;
             self.best_n_rounds = Some(nr);
             self.trees.truncate(nr);
+            tree_scales.truncate(nr);
         }
+        self.tree_scales = tree_scales;
 
         let total = (self.trees.len() * k).max(1) as f64;
         for v in &mut imp_acc { *v /= total; }
@@ -767,13 +1025,16 @@ impl GBTModel {
         let init = self.initial_pred.first().copied().unwrap_or(0.0);
         let lr = self.learning_rate;
         let trees = &self.trees;
+        let scales = &self.tree_scales;
         (0..x.nrows())
             .into_par_iter()
             .map(|i| {
                 let mut fi = init;
-                for round in trees {
+                for (t, round) in trees.iter().enumerate() {
                     if let Some(tree) = round.first() {
-                        fi += lr * traverse(&tree.nodes, &cm, i);
+                        // Use per-tree scale if available (DART), else learning_rate
+                        let s = scales.get(t).copied().unwrap_or(lr);
+                        fi += s * traverse(&tree.nodes, &cm, i);
                     }
                 }
                 fi
@@ -809,18 +1070,19 @@ impl GBTModel {
         let cm = ColMajorMatrix::from_dmatrix(x);
         let lr = self.learning_rate;
         let trees = &self.trees;
+        let scales = &self.tree_scales;
 
         if self.loss == GBTLoss::BinomialDeviance {
             // Binary: single tree per round, sigmoid output.
-            // Outer loop = samples (parallel), inner loop = rounds (sequential accumulation).
             let init = self.initial_pred.first().copied().unwrap_or(0.0);
             let flat: Vec<f64> = (0..n)
                 .into_par_iter()
                 .flat_map_iter(|i| {
                     let mut fi = init;
-                    for round in trees {
+                    for (t, round) in trees.iter().enumerate() {
                         if let Some(tree) = round.first() {
-                            fi += lr * traverse(&tree.nodes, &cm, i);
+                            let s = scales.get(t).copied().unwrap_or(lr);
+                            fi += s * traverse(&tree.nodes, &cm, i);
                         }
                     }
                     let p1 = sigmoid(fi);
@@ -835,9 +1097,10 @@ impl GBTModel {
                 .into_par_iter()
                 .flat_map_iter(|i| {
                     let mut f_row = init.clone();
-                    for round in trees {
+                    for (t, round) in trees.iter().enumerate() {
+                        let s = scales.get(t).copied().unwrap_or(lr);
                         for (c, tree) in round.iter().enumerate() {
-                            f_row[c] += lr * traverse(&tree.nodes, &cm, i);
+                            f_row[c] += s * traverse(&tree.nodes, &cm, i);
                         }
                     }
                     softmax_inplace(&mut f_row);
@@ -879,6 +1142,7 @@ fn fit_regression_tree(
     p: usize,
     max_features: Option<usize>,
     monotone_cst: Option<&[i8]>,
+    split_lambda: f64,
 ) -> GBTTree {
     let config = TreeConfig {
         max_depth,
@@ -893,6 +1157,7 @@ fn fit_regression_tree(
         extra_trees: false,
         monotone_cst: monotone_cst.map(|c| c.to_vec()),
         min_impurity_decrease: 0.0, // GBT uses gamma for pruning
+        split_lambda,
     };
     let (nodes, _proba_pool, importance_raw) = build_tree(
         cm, residuals, weights, qm, &config,
@@ -918,12 +1183,15 @@ fn fit_regression_tree_subset(
     feat_idx: Option<&[usize]>,
     monotone_cst: Option<&[i8]>,
     max_bin: usize,
+    split_lambda: f64,
+    max_features: Option<usize>,
 ) -> GBTTree {
     match feat_idx {
         None => fit_regression_tree(
             cm, residuals, weights, qm,
             max_depth, min_samples_split, min_samples_leaf,
-            histogram_threshold, seed, cm.ncols, None, monotone_cst,
+            histogram_threshold, seed, cm.ncols, max_features, monotone_cst,
+            split_lambda,
         ),
         Some(indices) => {
             let nrows = cm.nrows;
@@ -941,10 +1209,13 @@ fn fit_regression_tree_subset(
             let proj_cst: Option<Vec<i8>> = monotone_cst.map(|cst| {
                 indices.iter().map(|&f| cst[f]).collect()
             });
+            // Adjust max_features for projected feature count
+            let proj_mf = max_features.map(|mf| mf.min(k));
             let mut tree = fit_regression_tree(
                 &proj_cm, residuals, weights, proj_qm.as_ref(),
                 max_depth, min_samples_split, min_samples_leaf,
-                histogram_threshold, seed, k, None, proj_cst.as_deref(),
+                histogram_threshold, seed, k, proj_mf, proj_cst.as_deref(),
+                split_lambda,
             );
             // Remap Split.feature indices from projected space back to original
             for node in &mut tree.nodes {
@@ -1236,10 +1507,20 @@ impl Ord for LeafCandidate {
     }
 }
 
-/// Compute Newton leaf value (with L1, L2, max_delta_step).
+/// Compute Newton leaf value (with L1, L2, leaf smoothing, max_delta_step).
+///
+/// Leaf smoothing adds a constant to the denominator: w = G / (H + lambda + leaf_smooth).
+/// This shrinks leaves with few samples (small H) more aggressively than large ones,
+/// acting as Bayesian regularization with a zero-centered prior.
 #[inline]
 fn newton_value(g: f64, h: f64, lambda: f64, reg_alpha: f64, max_delta_step: f64) -> f64 {
-    let w = soft_thresh(g, reg_alpha) / (h + lambda);
+    newton_value_smooth(g, h, lambda, reg_alpha, max_delta_step, 0.0)
+}
+
+/// Newton leaf value with explicit leaf_smooth parameter.
+#[inline]
+fn newton_value_smooth(g: f64, h: f64, lambda: f64, reg_alpha: f64, max_delta_step: f64, leaf_smooth: f64) -> f64 {
+    let w = soft_thresh(g, reg_alpha) / (h + lambda + leaf_smooth);
     if max_delta_step > 0.0 { w.clamp(-max_delta_step, max_delta_step) } else { w }
 }
 
@@ -1264,6 +1545,7 @@ fn fit_lossguide_tree(
     max_delta_step: f64,
     max_leaves: usize,
     p: usize,
+    leaf_smooth: f64,
 ) -> (GBTTree, Vec<usize>) {
     let n = cm.nrows;
     let _ = seed; // not used for deterministic lossguide; kept for API symmetry
@@ -1282,7 +1564,7 @@ fn fit_lossguide_tree(
         g_root += gradients[i] * weights[i];
         h_root += hessians[i] * weights[i];
     }
-    let root_val = newton_value(g_root, h_root, lambda, reg_alpha, max_delta_step);
+    let root_val = newton_value_smooth(g_root, h_root, lambda, reg_alpha, max_delta_step, leaf_smooth);
 
     // Initialize nodes with a single root leaf
     let mut nodes: Vec<Node> = vec![Node {
@@ -1385,8 +1667,8 @@ fn fit_lossguide_tree(
         let left_idx_node = nodes.len();
         let right_idx_node = left_idx_node + 1;
 
-        let left_val = newton_value(cand.left_g, cand.left_h, lambda, reg_alpha, max_delta_step);
-        let right_val = newton_value(cand.right_g, cand.right_h, lambda, reg_alpha, max_delta_step);
+        let left_val = newton_value_smooth(cand.left_g, cand.left_h, lambda, reg_alpha, max_delta_step, leaf_smooth);
+        let right_val = newton_value_smooth(cand.right_g, cand.right_h, lambda, reg_alpha, max_delta_step, leaf_smooth);
 
         // Convert leaf to split
         nodes[cand.node_idx].kind = NodeKind::Split {
@@ -1626,7 +1908,7 @@ fn find_leaf(nodes: &[Node], cm: &ColMajorMatrix, row: usize) -> usize {
 }
 
 /// Replace leaf values with XGBoost Newton steps:
-///   leaf = soft_thresh(G_j, alpha) / (H_j + lambda)
+///   leaf = soft_thresh(G_j, alpha) / (H_j + lambda + leaf_smooth)
 /// with optional max_delta_step clipping.
 ///
 /// Splits are unchanged — only leaf values are updated (Chen & Guestrin 2016).
@@ -1640,6 +1922,7 @@ fn newton_leaf_update(
     reg_alpha: f64,
     min_child_weight: f64,
     max_delta_step: f64,
+    leaf_smooth: f64,
 ) -> (Vec<f64>, Vec<f64>) {
     let n = cm.nrows;
     let len = nodes.len();
@@ -1655,12 +1938,9 @@ fn newton_leaf_update(
     for idx in 0..len {
         if let NodeKind::Leaf { ref mut value, .. } = nodes[idx].kind {
             if h_sums[idx] >= min_child_weight {
-                let w = soft_thresh(g_sums[idx], reg_alpha) / (h_sums[idx] + lambda);
-                *value = if max_delta_step > 0.0 {
-                    w.clamp(-max_delta_step, max_delta_step)
-                } else {
-                    w
-                };
+                *value = newton_value_smooth(
+                    g_sums[idx], h_sums[idx], lambda, reg_alpha, max_delta_step, leaf_smooth,
+                );
             } else {
                 *value = 0.0; // insufficient hessian mass
             }
@@ -1963,19 +2243,21 @@ mod tests {
 
     #[test]
     fn test_gbt_gamma_prunes_nodes() {
-        // High gamma should prune low-gain splits → fewer total nodes
+        // High gamma should prune low-gain splits → fewer nodes per tree.
+        // Use 1 round to avoid cross-round residual interaction (with split_lambda,
+        // pruned round-1 trees change residuals, potentially growing later trees).
         let (x, y) = make_reg_data();
 
-        let mut model_no_gamma = GBTModel::new(10, 0.1, 4, 2, 1, 1.0, 42);
-        model_no_gamma.lambda = 1.0; // need some lambda for meaningful gain calc
+        let mut model_no_gamma = GBTModel::new(1, 0.1, 4, 2, 1, 1.0, 42);
+        model_no_gamma.lambda = 1.0;
         model_no_gamma.fit_reg(&x, &y, None).unwrap();
 
-        let mut model_gamma = GBTModel::new(10, 0.1, 4, 2, 1, 1.0, 42);
+        let mut model_gamma = GBTModel::new(1, 0.1, 4, 2, 1, 1.0, 42);
         model_gamma.lambda = 1.0;
         model_gamma.gamma = 5.0; // aggressive pruning
         model_gamma.fit_reg(&x, &y, None).unwrap();
 
-        // Count total nodes
+        // Count total nodes (single round)
         let count_nodes = |m: &GBTModel| -> usize {
             m.trees.iter().flat_map(|round| round.iter().map(|t| t.nodes.len())).sum()
         };

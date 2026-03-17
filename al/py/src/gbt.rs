@@ -30,8 +30,9 @@ use pyo3::prelude::*;
 ///     Column subsampling fraction per tree. 1.0 = no subsampling.
 /// min_child_weight : float, default 1.0
 ///     Minimum sum of hessian (instance weight) needed in a child leaf.
-/// histogram_threshold : int, default 4096
+/// histogram_threshold : int, default 0
 ///     Node count threshold: use histogram splitting above this, sort-based below.
+///     Default 0 = always use histograms (like XGBoost/LightGBM).
 /// n_iter_no_change : int or None, default None
 ///     Early stopping patience. None = no early stopping.
 /// validation_fraction : float, default 0.1
@@ -42,6 +43,12 @@ use pyo3::prelude::*;
 ///     Maximum absolute leaf weight. 0.0 = disabled.
 /// base_score : float or None, default None
 ///     Initial prediction. None = estimated from data.
+/// leaf_smooth : float, default 0.0
+///     Bayesian shrinkage on leaf weights: w = G / (H + lambda + leaf_smooth).
+///     Shrinks leaves with few samples toward zero. Good values: 1.0-10.0.
+/// dart_rate : float, default 0.0
+///     DART dropout rate. Fraction of existing trees dropped per round (regression only).
+///     0.0 = standard boosting. Good values: 0.05-0.3.
 #[pyclass(name = "GradientBoosting")]
 pub(crate) struct PyGradientBoosting {
     model: GBTModel,
@@ -54,12 +61,14 @@ impl PyGradientBoosting {
                         min_samples_split=2, min_samples_leaf=1,
                         subsample=1.0, seed=42,
                         reg_lambda=0.0, gamma=0.0, colsample_bytree=1.0,
-                        min_child_weight=1.0, histogram_threshold=4096,
+                        colsample_bynode=1.0,
+                        min_child_weight=1.0, histogram_threshold=0,
                         n_iter_no_change=None, validation_fraction=0.1,
                         reg_alpha=0.0, max_delta_step=0.0,
                         base_score=None, monotone_cst=None, max_bin=254,
                         grow_policy="depthwise", max_leaves=0,
-                        goss_top_rate=1.0, goss_other_rate=1.0, goss_min_n=50000))]
+                        goss_top_rate=1.0, goss_other_rate=1.0, goss_min_n=50000,
+                        leaf_smooth=0.0, scale_pos_weight=1.0, dart_rate=0.0))]
     fn new(
         n_estimators: usize,
         learning_rate: f64,
@@ -71,6 +80,7 @@ impl PyGradientBoosting {
         reg_lambda: f64,
         gamma: f64,
         colsample_bytree: f64,
+        colsample_bynode: f64,
         min_child_weight: f64,
         histogram_threshold: usize,
         n_iter_no_change: Option<usize>,
@@ -85,6 +95,9 @@ impl PyGradientBoosting {
         goss_top_rate: f64,
         goss_other_rate: f64,
         goss_min_n: usize,
+        leaf_smooth: f64,
+        scale_pos_weight: f64,
+        dart_rate: f64,
     ) -> PyResult<Self> {
         let gp = match grow_policy {
             "depthwise" => GrowPolicy::Depthwise,
@@ -100,6 +113,7 @@ impl PyGradientBoosting {
         model.lambda = reg_lambda;
         model.gamma = gamma;
         model.colsample_bytree = colsample_bytree;
+        model.colsample_bynode = colsample_bynode;
         model.min_child_weight = min_child_weight;
         model.histogram_threshold = histogram_threshold;
         model.n_iter_no_change = n_iter_no_change;
@@ -114,6 +128,9 @@ impl PyGradientBoosting {
         model.goss_top_rate = goss_top_rate;
         model.goss_other_rate = goss_other_rate;
         model.goss_min_n = goss_min_n;
+        model.leaf_smooth = leaf_smooth;
+        model.scale_pos_weight = scale_pos_weight;
+        model.dart_rate = dart_rate;
         Ok(PyGradientBoosting { model })
     }
 
@@ -272,5 +289,25 @@ impl PyGradientBoosting {
     #[getter]
     fn goss_min_n(&self) -> usize {
         self.model.goss_min_n
+    }
+
+    #[getter]
+    fn leaf_smooth(&self) -> f64 {
+        self.model.leaf_smooth
+    }
+
+    #[getter]
+    fn dart_rate(&self) -> f64 {
+        self.model.dart_rate
+    }
+
+    #[getter]
+    fn colsample_bynode(&self) -> f64 {
+        self.model.colsample_bynode
+    }
+
+    #[getter]
+    fn scale_pos_weight(&self) -> f64 {
+        self.model.scale_pos_weight
     }
 }

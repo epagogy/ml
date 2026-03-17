@@ -89,7 +89,9 @@
                             colsample_bytree = dots[["colsample_bytree"]] %||% 1.0,
                             min_child_weight = dots[["min_child_weight"]] %||% 1.0,
                             n_iter_no_change = dots[["n_iter_no_change"]],
-                            validation_fraction = dots[["validation_fraction"]] %||% 0.1),
+                            validation_fraction = dots[["validation_fraction"]] %||% 0.1,
+                            colsample_bynode = dots[["colsample_bynode"]] %||% 1.0,
+                            scale_pos_weight = dots[["scale_pos_weight"]] %||% 1.0),
       naive_bayes       = if (task == "regression") {
                             config_error("algorithm='naive_bayes' does not support regression.")
                           } else {

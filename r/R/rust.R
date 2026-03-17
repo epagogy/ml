@@ -326,7 +326,9 @@
                           reg_lambda = 0.0, gamma = 0.0,
                           colsample_bytree = 1.0, min_child_weight = 1.0,
                           n_iter_no_change = NULL,
-                          validation_fraction = 0.1) {
+                          validation_fraction = 0.1,
+                          colsample_bynode = 1.0,
+                          scale_pos_weight = 1.0) {
   Xm <- as.matrix(X)
   # Convert NULL -> R NULL (Nullable<i32>::Null on Rust side)
   nic <- if (is.null(n_iter_no_change)) NULL else as.integer(n_iter_no_change)
@@ -341,7 +343,8 @@
                   as.integer(seed), sample_weight,
                   as.numeric(reg_lambda), as.numeric(gamma),
                   as.numeric(colsample_bytree), as.numeric(min_child_weight),
-                  nic, as.numeric(validation_fraction))
+                  nic, as.numeric(validation_fraction),
+                  as.numeric(colsample_bynode), as.numeric(scale_pos_weight))
   } else {
     json <- .Call(wrap__ml_rust_gbt_fit_reg,
                   as.numeric(Xm), nrow(Xm), ncol(Xm),
@@ -352,7 +355,8 @@
                   as.integer(seed), sample_weight,
                   as.numeric(reg_lambda), as.numeric(gamma),
                   as.numeric(colsample_bytree), as.numeric(min_child_weight),
-                  nic, as.numeric(validation_fraction))
+                  nic, as.numeric(validation_fraction),
+                  as.numeric(colsample_bynode))
   }
   list(json = json, type = paste0("rust_gbt_", task), task = task)
 }

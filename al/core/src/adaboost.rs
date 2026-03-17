@@ -125,6 +125,7 @@ impl AdaBoostModel {
                 extra_trees: false,
                 monotone_cst: None,
                 min_impurity_decrease: 0.0, // no pruning for stumps
+                split_lambda: 0.0,
             };
             let (nodes, proba_pool, importance_raw) = build_tree(
                 &cm,
