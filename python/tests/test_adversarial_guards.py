@@ -15,6 +15,7 @@ import ml
 from ml._provenance import (
     _fingerprint,
     _registry,
+    guard_fit,
     register_partition,
 )
 
@@ -176,7 +177,6 @@ class TestSerializationBypass:
     def test_parquet_roundtrip_preserves_fingerprint(self, split_data, tmp_path):
         """Parquet preserves cell values — fingerprint matches registry.
         Content-addressed identity survives format roundtrips."""
-        pytest.importorskip("pyarrow")
         path = tmp_path / "train.parquet"
         split_data.train.to_parquet(path, index=False)
         loaded = pd.read_parquet(path)
@@ -216,18 +216,19 @@ class TestConfigToggling:
 class TestUnfingerprintable:
     """Can unhashable data slip through?"""
 
-    def test_list_valued_column_passes_guard_silently(self):
-        """DataFrames with list-valued columns can't be fingerprinted.
-        Guard passes silently — can't judge, no evidence.
-        (fit may still fail on the actual data — that's a separate issue.)"""
+    def test_list_valued_column_fingerprinted_and_guarded(self):
+        """DataFrames with list-valued columns get valid fingerprint via CSV fallback.
+        Guard correctly rejects unregistered data — no silent bypass."""
         df = pd.DataFrame({
             "x": [[1, 2], [3, 4], [5, 6]] * 30,
             "target": ["a", "b", "a"] * 30,
         })
-        # The guard should pass (unfingerprintable = no evidence).
-        # fit() itself may crash on unhashable data — that's expected.
         fp = _fingerprint(df)
-        assert fp is None  # confirms unfingerprintable
+        assert isinstance(fp, str) and len(fp) == 16  # CSV fallback works
+        assert _fingerprint(df) == fp  # deterministic
+        # Guard rejects — data not from split()
+        with pytest.raises(ml.PartitionError):
+            guard_fit(df)
 
 
 # ── Attack 7: Cross-split contamination ──────────────────────────────────
@@ -364,17 +365,21 @@ class TestPandasOperations:
 class TestAssessOnceBypass:
     """Can assess-once be bypassed via serialization?"""
 
-    def test_save_load_cannot_bypass_holdout_guard(self, split_data, tmp_path):
-        """Save/load resets per-model counter but per-holdout guard still blocks.
-        The provenance registry remembers the test holdout was already assessed."""
-        ml.config(guards="strict")
+    def test_save_load_does_not_bypass_partition_guard(self, split_data, tmp_path):
+        """Save/load resets model._assess_count, but the partition-level
+        guard (registry._assessed) catches the bypass. The test partition
+        is already marked as assessed — regardless of which model asks.
+        Previously a known gap, now CLOSED by per-partition tracking."""
         model = ml.fit(data=split_data.train, target="target", seed=42)
         ml.assess(model=model, test=split_data.test)
-        # Save/load resets the model's _assess_count...
+        # Second assess fails (partition guard fires first)
+        with pytest.raises(ml.PartitionError, match="already been assessed"):
+            ml.assess(model=model, test=split_data.test)
+        # Save/load resets model counter but partition is still spent
         path = tmp_path / "model.mlw"
         ml.save(model, str(path))
         loaded = ml.load(str(path))
-        # ...but the per-holdout guard catches the re-assessment
+        # Partition guard catches this — previously a known gap, now CLOSED
         with pytest.raises(ml.PartitionError, match="already been assessed"):
             ml.assess(model=loaded, test=split_data.test)
 

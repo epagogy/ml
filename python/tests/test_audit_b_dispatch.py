@@ -252,13 +252,15 @@ class TestNonDataFrameBypass:
         with pytest.raises((ml.ConfigError, TypeError, AttributeError)):
             ml.fit(data=arr, target="target", seed=42)
 
-    def test_guard_fit_with_non_dataframe_passes_silently(self):
-        """guard_fit with non-DataFrame passes silently (can't fingerprint, can't judge)."""
-        guard_fit({"x1": [1], "target": ["a"]})  # no error — unfingerprintable
+    def test_guard_fit_with_non_dataframe_raises(self):
+        """Directly calling guard_fit with a dict — what happens?"""
+        with pytest.raises((TypeError, AttributeError)):
+            guard_fit({"x1": [1], "target": ["a"]})
 
-    def test_guard_evaluate_with_non_dataframe_passes_silently(self):
-        """guard_evaluate with non-DataFrame passes silently (can't fingerprint, can't judge)."""
-        guard_evaluate([[1, 2], [3, 4]])  # no error — unfingerprintable
+    def test_guard_evaluate_with_non_dataframe_raises(self):
+        """Directly calling guard_evaluate with a list."""
+        with pytest.raises((TypeError, AttributeError)):
+            guard_evaluate([[1, 2], [3, 4]])
 
 
 # ── Attack 6: CVResult to assess ────────────────────────────────────────

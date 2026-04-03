@@ -59,6 +59,14 @@ def predict(
     from ._types import ConfigError, TuningResult
     from ._types import Model as ModelType
 
+    # SPARSE FAST PATH — skip normalize, pass CSR directly to engine
+    from .sparse import SparseFrame as _SF
+    if isinstance(data, _SF):
+        if getattr(model, "_sparse", False):
+            return _predict_sparse(model, data)
+        else:
+            data = data.to_dense()
+
     # Auto-convert Polars/other DataFrames to pandas
     data = to_pandas(data)
 
@@ -296,7 +304,6 @@ def _predict_proba(model: Model, data: pd.DataFrame) -> pd.DataFrame:
             f"This model's task is '{model._task}'."
         )
 
-
     if not isinstance(data, pd.DataFrame):
         raise DataError(
             f"predict_proba() expects DataFrame, got {type(data).__name__}. "
@@ -386,7 +393,7 @@ def predict_proba(model: Model, data: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# Prediction intervals
+# Prediction intervals (Chain 12.3)
 # ---------------------------------------------------------------------------
 
 
@@ -453,7 +460,7 @@ def _predict_intervals(
 
 
 # ---------------------------------------------------------------------------
-# Test-time augmentation
+# Test-time augmentation (Chain 5.2)
 # ---------------------------------------------------------------------------
 
 
@@ -535,3 +542,35 @@ def _average_predictions(
             vals, counts = np.unique(preds_arr[:, i], return_counts=True)
             majority[i] = vals[np.argmax(counts)]
         return pd.Series(majority, index=first.index, name=first.name)
+
+
+def _predict_sparse(model: Model, sf) -> pd.Series:
+    """Sparse fast-path predict — skip normalize, pass CSR to engine.
+
+    Only used when model was trained via _fit_sparse (model._sparse == True).
+    Bypasses: column reordering, NormState.transform, DataFrame construction.
+    """
+    # Ensure target is set correctly so to_X_sparse excludes it
+    if sf.target is None and model._target in sf.numeric.columns:
+        sf = type(sf)(
+            data=sf.data,
+            feature_names=sf.feature_names,
+            numeric=sf.numeric,
+            target=model._target,
+            index=sf.index,
+        )
+
+    # Get X as scipy CSR
+    X_sparse = sf.to_X_sparse(algorithm=model._algorithm)
+
+    # Predict directly
+    predictions = model._model.predict(X_sparse)
+
+    # Decode labels
+    decoded = model._feature_encoder.decode(predictions)
+    result = pd.Series(decoded.values, index=sf.index, name=model._target)
+
+    if model._task == "regression" and result.dtype != np.float64:
+        result = result.astype(np.float64)
+
+    return result

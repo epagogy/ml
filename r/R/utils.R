@@ -90,25 +90,24 @@ ml_algorithms <- function(task = NULL) {
 #' "churn", "fraud"
 #'
 #' @param name Dataset name (string)
-#' @param seed Random seed for synthetic datasets (default 42)
 #' @returns A data.frame
 #' @export
 #' @examples
 #' churn <- ml_dataset("churn")
 #' head(churn)
-ml_dataset <- function(name, seed = 42L) {
-  .dataset_impl(name = name, seed = seed)
+ml_dataset <- function(name) {
+  .dataset_impl(name = name)
 }
 
-.dataset_impl <- function(name, seed = 42L) {
+.dataset_impl <- function(name) {
   switch(name,
     iris     = datasets::iris,
-    wine     = .create_wine(seed),
-    cancer   = .create_cancer(seed),
-    diabetes = .create_diabetes(seed),
-    houses   = .create_houses(seed),
-    churn    = .create_churn(seed),
-    fraud    = .create_fraud(seed),
+    wine     = .create_wine(),
+    cancer   = .create_cancer(),
+    diabetes = .create_diabetes(),
+    houses   = .create_houses(),
+    churn    = .create_churn(),
+    fraud    = .create_fraud(),
     data_error(paste0(
       "Unknown dataset: '", name, "'. Choose from: iris, wine, cancer, diabetes, houses, churn, fraud"
     ))
@@ -117,8 +116,8 @@ ml_dataset <- function(name, seed = 42L) {
 
 # ── Synthetic datasets ─────────────────────────────────────────────────────────
 
-.create_churn <- function(seed = 42L) {
-  withr::local_seed(seed)
+.create_churn <- function() {
+  withr::local_seed(42L)
   n <- 1000L
   age              <- as.integer(stats::rnorm(n, 40, 12))
   monthly_charges  <- stats::runif(n, 20, 120)
@@ -149,10 +148,10 @@ ml_dataset <- function(name, seed = 42L) {
   )
 }
 
-.create_fraud <- function(seed = 42L) {
+.create_fraud <- function() {
   # 10,000 row synthetic credit card fraud dataset (2% fraud rate)
   # Matches Python _create_fraud_dataset() structure
-  withr::local_seed(seed)
+  withr::local_seed(42L)
   n <- 10000L
   fraud_flag <- as.integer(stats::runif(n) < 0.02)  # 2% fraud rate
 
@@ -190,7 +189,7 @@ ml_dataset <- function(name, seed = 42L) {
   )
 }
 
-.create_wine <- function(seed = 42L) {
+.create_wine <- function() {
   # Bundled from UCI Wine dataset (178 rows, 13 features, 3 classes)
   # Using R's built-in datasets doesn't have this; generate approximate structure
   if (requireNamespace("datasets", quietly = TRUE)) {
@@ -202,7 +201,7 @@ ml_dataset <- function(name, seed = 42L) {
     }
   }
   # Fallback: small synthetic wine-like dataset
-  withr::local_seed(seed)
+  withr::local_seed(42L)
   n <- 178L
   data.frame(
     alcohol               = stats::rnorm(n, 13, 0.8),
@@ -224,8 +223,8 @@ ml_dataset <- function(name, seed = 42L) {
   )
 }
 
-.create_cancer <- function(seed = 42L) {
-  withr::local_seed(seed)
+.create_cancer <- function() {
+  withr::local_seed(42L)
   n <- 569L
   data.frame(
     mean_radius          = abs(stats::rnorm(n, 14, 3.5)),
@@ -244,8 +243,8 @@ ml_dataset <- function(name, seed = 42L) {
   )
 }
 
-.create_diabetes <- function(seed = 42L) {
-  withr::local_seed(seed)
+.create_diabetes <- function() {
+  withr::local_seed(42L)
   n <- 442L
   data.frame(
     age       = stats::rnorm(n, 0, 1),
@@ -263,8 +262,8 @@ ml_dataset <- function(name, seed = 42L) {
   )
 }
 
-.create_houses <- function(seed = 42L) {
-  withr::local_seed(seed)
+.create_houses <- function() {
+  withr::local_seed(42L)
   n <- 1000L
   data.frame(
     median_income     = abs(stats::rnorm(n, 3.9, 1.9)),

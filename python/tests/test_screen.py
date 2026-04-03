@@ -167,11 +167,11 @@ def test_screen_uses_parallel(small_classification_data):
 # ── A13: GPU detection ────────────────────────────────────────────────────────
 
 
-# ── Validation ──────────────────────────────────────────────────────
+# ── Chain 2: Validation Fortress ──────────────────────────────────────────────
 
 
 def test_screen_timing_column(small_classification_data):
-    """screen() includes time_seconds column > 0."""
+    """screen() includes time_seconds column > 0. Chain 2.7."""
     s = ml.split(data=small_classification_data, target="target", seed=42)
     result = ml.screen(data=s, target="target", seed=42,
                        algorithms=["logistic"])
@@ -180,7 +180,7 @@ def test_screen_timing_column(small_classification_data):
 
 
 def test_screen_cv_std_column(small_classification_data):
-    """screen() on CVResult includes cv_std columns."""
+    """screen() on CVResult includes cv_std columns. Chain 2.2."""
     s = ml.split(data=small_classification_data, target="target", seed=42)
     cv = ml.cv(s, folds=3, seed=42)
     result = ml.screen(data=cv, target="target", seed=42,
@@ -191,7 +191,7 @@ def test_screen_cv_std_column(small_classification_data):
 
 
 def test_screen_cv_std_positive(small_classification_data):
-    """cv_std values are non-negative."""
+    """cv_std values are non-negative. Chain 2.2."""
     s = ml.split(data=small_classification_data, target="target", seed=42)
     cv = ml.cv(s, folds=3, seed=42)
     result = ml.screen(data=cv, target="target", seed=42,
@@ -202,7 +202,7 @@ def test_screen_cv_std_positive(small_classification_data):
 
 
 def test_screen_ranking_public_api(small_classification_data):
-    """Leaderboard.ranking returns a DataFrame."""
+    """Leaderboard.ranking returns a DataFrame. Chain 2.2."""
     s = ml.split(data=small_classification_data, target="target", seed=42)
     result = ml.screen(data=s, target="target", seed=42,
                        algorithms=["logistic", "random_forest"])
@@ -214,7 +214,7 @@ def test_screen_ranking_public_api(small_classification_data):
 
 
 def test_screen_multi_metric(small_classification_data):
-    """screen(metrics=[...]) computes extra metrics per algorithm."""
+    """screen(metrics=[...]) computes extra metrics per algorithm. Chain 2.3."""
     s = ml.split(data=small_classification_data, target="target", seed=42)
     result = ml.screen(data=s, target="target", seed=42,
                        algorithms=["logistic"],
@@ -224,7 +224,7 @@ def test_screen_multi_metric(small_classification_data):
 
 
 def test_screen_multi_metric_sort_by(small_classification_data):
-    """screen(metrics=[...], sort_by=...) sorts by requested metric."""
+    """screen(metrics=[...], sort_by=...) sorts by requested metric. Chain 2.3."""
     s = ml.split(data=small_classification_data, target="target", seed=42)
     result = ml.screen(data=s, target="target", seed=42,
                        algorithms=["logistic", "random_forest"],

@@ -355,11 +355,11 @@ def test_oof_non_stacked_model_is_none(clf_data):
     assert model.oof_predictions_ is None
 
 
-# ── Multi-level stacking ──────────────────────────────────────────
+# ── Chain 3.2: Multi-level stacking ──────────────────────────────────────────
 
 
 def test_stack_2_levels(clf_data):
-    """stack(levels=2) trains without error."""
+    """stack(levels=2) trains without error. Chain 3.2."""
     import warnings
     s = ml.split(data=clf_data, target="target", seed=42)
     with warnings.catch_warnings():
@@ -375,7 +375,7 @@ def test_stack_2_levels(clf_data):
 
 
 def test_stack_passthrough(clf_data):
-    """stack(passthrough=True) includes original features in meta-learner."""
+    """stack(passthrough=True) includes original features in meta-learner. Chain 3.2."""
     import warnings
     s = ml.split(data=clf_data, target="target", seed=42)
     with warnings.catch_warnings():
@@ -390,7 +390,7 @@ def test_stack_passthrough(clf_data):
 
 
 def test_stack_2_levels_improves(clf_data):
-    """2-level stack produces valid scores (not catastrophically worse)."""
+    """2-level stack produces valid scores (not catastrophically worse). Chain 3.2."""
     import warnings
 
     from sklearn.metrics import roc_auc_score
@@ -413,7 +413,7 @@ def test_stack_2_levels_improves(clf_data):
 
 
 def test_stack_levels_oof_shape(clf_data):
-    """OOF predictions have correct shape for levels=1 and levels=2."""
+    """OOF predictions have correct shape for levels=1 and levels=2. Chain 3.2."""
     import warnings
     s = ml.split(data=clf_data, target="target", seed=42)
     n_models = 3  # default base models: xgboost, random_forest, logistic (Step 6.9)
@@ -426,11 +426,11 @@ def test_stack_levels_oof_shape(clf_data):
     assert m2.oof_predictions_.shape == (len(s.train), n_models)
 
 
-# ── Meta-learner algorithm choice ──────────────────────────────────
+# ── Chain 3.3: Meta-learner algorithm choice ──────────────────────────────────
 
 
 def test_stack_meta_xgboost(clf_data):
-    """stack(meta='xgboost') works — XGBoost as non-linear meta-learner."""
+    """stack(meta='xgboost') works — XGBoost as non-linear meta-learner. Chain 3.3."""
     import warnings
     s = ml.split(data=clf_data, target="target", seed=42)
     with warnings.catch_warnings():
@@ -446,7 +446,7 @@ def test_stack_meta_xgboost(clf_data):
 
 
 def test_stack_meta_lightgbm(clf_data):
-    """stack(meta='lightgbm') works when LightGBM is available."""
+    """stack(meta='lightgbm') works when LightGBM is available. Chain 3.3."""
     import warnings
     pytest.importorskip("lightgbm")
     s = ml.split(data=clf_data, target="target", seed=42)

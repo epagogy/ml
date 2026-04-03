@@ -1,4 +1,4 @@
-"""Tests for ml.discretize() — continuous feature binning."""
+"""Tests for ml.discretize() — continuous feature binning. Chain 4.2."""
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,7 @@ def num_df():
 
 
 def test_discretize_returns_binner(num_df):
-    """discretize() returns a Binner object."""
+    """discretize() returns a Binner object. Chain 4.2."""
     binner = discretize(num_df, columns=["age"])
     assert isinstance(binner, Binner)
     assert binner.method == "quantile"
@@ -29,7 +29,7 @@ def test_discretize_returns_binner(num_df):
 
 
 def test_discretize_transform_integer_columns(num_df):
-    """transform() replaces columns with integer bin indices."""
+    """transform() replaces columns with integer bin indices. Chain 4.2."""
     binner = discretize(num_df, columns=["age", "income"])
     out = binner.transform(num_df)
     assert out["age"].dtype in (int, "int64", "int32")
@@ -37,7 +37,7 @@ def test_discretize_transform_integer_columns(num_df):
 
 
 def test_discretize_quantile_bins_in_range(num_df):
-    """Quantile binning produces indices in 0..n_bins-1."""
+    """Quantile binning produces indices in 0..n_bins-1. Chain 4.2."""
     n_bins = 5
     binner = discretize(num_df, columns=["age"], method="quantile", n_bins=n_bins)
     out = binner.transform(num_df)
@@ -46,7 +46,7 @@ def test_discretize_quantile_bins_in_range(num_df):
 
 
 def test_discretize_uniform_bins_in_range(num_df):
-    """Uniform binning produces indices in 0..n_bins-1."""
+    """Uniform binning produces indices in 0..n_bins-1. Chain 4.2."""
     n_bins = 4
     binner = discretize(num_df, columns=["income"], method="uniform", n_bins=n_bins)
     out = binner.transform(num_df)
@@ -55,13 +55,13 @@ def test_discretize_uniform_bins_in_range(num_df):
 
 
 def test_discretize_via_ml_namespace(num_df):
-    """ml.discretize() accessible from public API."""
+    """ml.discretize() accessible from public API. Chain 4.2."""
     binner = ml.discretize(num_df, columns=["age"])
     assert isinstance(binner, Binner)
 
 
 def test_discretize_preserves_other_columns(num_df):
-    """discretize() does not touch non-specified columns."""
+    """discretize() does not touch non-specified columns. Chain 4.2."""
     binner = discretize(num_df, columns=["age"])
     out = binner.transform(num_df)
     pd.testing.assert_series_equal(out["score"], num_df["score"])

@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Engine x Algorithm benchmark for the ml benchmarks (R).
+# Engine x Algorithm Benchmark Suite (R).
 #
 # Measures speed, accuracy, memory, and parity across ml engines (Rust vs CRAN)
 # for 9 algorithms decomposed into 4 primitives (Represent, Objective, Search, Compose).
@@ -7,7 +7,7 @@
 # Usage:
 #   Rscript benchmarks/bench_engines.R                       # tiny+small
 #   Rscript benchmarks/bench_engines.R --medium              # +100K
-#   Rscript benchmarks/bench_engines.R --server               # +1M
+#   Rscript benchmarks/bench_engines.R --large               # +1M
 #   Rscript benchmarks/bench_engines.R --algorithm knn       # single algo
 #   Rscript benchmarks/bench_engines.R --json --output engines_r.json
 
@@ -428,7 +428,7 @@ i <- 1L
 while (i <= length(args)) {
   if (args[i] == "--medium") {
     sizes <- c(sizes, "medium")
-  } else if (args[i] == "--server") {
+  } else if (args[i] == "--large") {
     sizes <- c(sizes, "medium", "large")
   } else if (args[i] == "--algorithm" && i < length(args)) {
     i <- i + 1L

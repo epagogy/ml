@@ -178,12 +178,12 @@ def test_compare_tuning_result_labeled(compare_models):
     assert any("tuned" in a for a in algos)
 
 
-# ── Statistical significance ───────────────────────────────────────
+# ── Chain 2.6: Statistical significance ───────────────────────────────────────
 
 
 @pytest.mark.slow
 def test_compare_significance_column(compare_models):
-    """compare() adds significant_vs_best column."""
+    """compare() adds significant_vs_best column. Chain 2.6."""
     s, model_log, model_rf = compare_models
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -198,7 +198,7 @@ def test_compare_significance_column(compare_models):
 
 @pytest.mark.slow
 def test_compare_identical_models_not_significant(compare_models):
-    """A model compared to itself is not significant (p > 0.05)."""
+    """A model compared to itself is not significant (p > 0.05). Chain 2.6."""
     s, model_log, _ = compare_models
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

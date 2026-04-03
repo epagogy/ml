@@ -286,7 +286,7 @@ def test_split_temporal_nan_time_warns():
 def test_split_temporal_cv_basic():
     """Temporal CV returns CVResult with correct number of folds."""
     data = _make_temporal_data(200)
-    s = ml.split_temporal(data=data, target="target", time="timestamp")
+    s = ml.split(data=data, target="target", time="timestamp")
     cv = ml.cv_temporal(s, folds=3)
 
     assert isinstance(cv, ml.CVResult)
@@ -297,7 +297,7 @@ def test_split_temporal_cv_basic():
 def test_split_temporal_cv_expanding_window():
     """Later folds have more training data (expanding window)."""
     data = _make_temporal_data(200)
-    s = ml.split_temporal(data=data, target="target", time="timestamp")
+    s = ml.split(data=data, target="target", time="timestamp")
     cv = ml.cv_temporal(s, folds=3)
 
     train_sizes = [len(fold_train) for fold_train, _ in cv.folds]
@@ -321,7 +321,7 @@ def test_split_temporal_cv_data_is_sorted():
         "target": rng.choice(["a", "b"], n),
     })
 
-    s = ml.split_temporal(data=data, target="target", time="timestamp")
+    s = ml.split(data=data, target="target", time="timestamp")
     cv = ml.cv_temporal(s, folds=3)
 
     # Time column is dropped from _data (used for ordering only)
@@ -333,19 +333,23 @@ def test_split_temporal_cv_data_is_sorted():
 def test_split_temporal_cv_too_many_folds_raises():
     """DataError when folds >= n."""
     data = _make_temporal_data(10)
-    s = ml.split_temporal(data=data, target="target", time="timestamp")
+    s = ml.split(data=data, target="target", time="timestamp")
 
-    with pytest.raises((ml.DataError, ml.ConfigError)):
+    with pytest.raises(ml.DataError, match="Cannot create 10 temporal CV folds"):
         ml.cv_temporal(s, folds=10)
 
 
 def test_split_temporal_cv_small_data_works():
     """Temporal CV with minimal data (fold_size=1) produces valid folds."""
+    import warnings as w
+    # Need enough dev rows (train+valid) for 4 temporal folds.
+    # split(60/20/20) on 20 rows → 12 dev rows, which supports folds=4 (fold_size=2).
     data = _make_temporal_data(20)
-    s = ml.split_temporal(data=data, target="target", time="timestamp")
-
-    cv = ml.cv_temporal(s, folds=3)
-    assert cv.k == 3
+    with w.catch_warnings():
+        w.simplefilter("ignore")
+        s = ml.split(data=data, target="target", time="timestamp")
+    cv = ml.cv_temporal(s, folds=4)
+    assert cv.k == 4
     for _, fold_valid in cv.folds:
         assert len(fold_valid) >= 1
 
@@ -360,7 +364,7 @@ def test_split_temporal_cv_divisible_n_all_folds_valid():
         "target": rng.choice(["a", "b"], 100),
     })
 
-    s = ml.split_temporal(data=data, target="target", time="timestamp")
+    s = ml.split(data=data, target="target", time="timestamp")
     cv = ml.cv_temporal(s, folds=3)
 
     # Should produce exactly 3 folds
@@ -417,7 +421,7 @@ def test_split_temporal_cv_works_with_fit():
         "x2": rng.rand(n),
         "target": rng.choice(["yes", "no"], n),
     })
-    s = ml.split_temporal(data=data, target="target", time="day")
+    s = ml.split(data=data, target="target", time="day")
     cv = ml.cv_temporal(s, folds=3)
 
     with w.catch_warnings():
@@ -440,7 +444,7 @@ def test_split_temporal_cv_works_with_screen():
         "x2": rng.rand(n),
         "target": rng.choice(["yes", "no"], n),
     })
-    s = ml.split_temporal(data=data, target="target", time="day")
+    s = ml.split(data=data, target="target", time="day")
     cv = ml.cv_temporal(s, folds=3)
 
     with w.catch_warnings():
@@ -560,7 +564,7 @@ def test_split_temporal_cv_remainder_handling():
         "target": rng.choice(["a", "b"], n),
     })
 
-    s = ml.split_temporal(data=data, target="target", time="ts")
+    s = ml.split(data=data, target="target", time="ts")
     cv = ml.cv_temporal(s, folds=3)
     assert cv.k == 3
 
@@ -570,6 +574,11 @@ def test_split_temporal_cv_remainder_handling():
     assert len(last_valid) >= len(second_valid), (
         "Last fold should get remainder rows"
     )
+
+    # All dev data covered: last fold valid should reach end of dev partition
+    last_train, last_valid = cv.folds[-1]
+    dev_max_index = s.dev.index.max()
+    assert max(last_valid.index) == dev_max_index, "Last fold valid should reach end of dev data"
 
 
 def test_split_temporal_two_tuple_ratio():
@@ -628,7 +637,7 @@ def test_split_temporal_cv_fold_indices_no_overlap():
         "target": rng.choice(["a", "b"], n),
     })
 
-    s = ml.split_temporal(data=data, target="target", time="ts")
+    s = ml.split(data=data, target="target", time="ts")
     cv = ml.cv_temporal(s, folds=4)
 
     # Valid sets should not overlap
@@ -648,7 +657,7 @@ def test_split_temporal_cv_train_always_before_valid():
         "target": rng.choice(["a", "b"], n),
     })
 
-    s = ml.split_temporal(data=data, target="target", time="ts")
+    s = ml.split(data=data, target="target", time="ts")
     cv = ml.cv_temporal(s, folds=4)
 
     for i, (fold_train, fold_valid) in enumerate(cv.folds):
@@ -691,7 +700,7 @@ def test_split_temporal_cv_fit_produces_valid_scores():
         "x2": rng.rand(n),
         "target": rng.choice(["yes", "no"], n),
     })
-    s = ml.split_temporal(data=data, target="target", time="day")
+    s = ml.split(data=data, target="target", time="day")
     cv = ml.cv_temporal(s, folds=3)
 
     with w.catch_warnings():
@@ -723,7 +732,7 @@ def test_split_temporal_cv_degenerate_fold_single_class():
         "target": ["a"] * 200 + np.random.RandomState(42).choice(["a", "b"], 100).tolist(),
     })
 
-    s = ml.split_temporal(data=data, target="target", time="day")
+    s = ml.split(data=data, target="target", time="day")
     cv = ml.cv_temporal(s, folds=3)
 
     # Fold 0 trains on early rows, validates on middle rows — likely all "a"
@@ -750,7 +759,7 @@ def test_split_temporal_cv_datetime_column_not_in_features():
         "target": rng.choice([0, 1], n),
     })
 
-    s = ml.split_temporal(data=data, target="target", time="timestamp")
+    s = ml.split(data=data, target="target", time="timestamp")
     cv = ml.cv_temporal(s, folds=3)
 
     # Time column should be dropped from CVResult._data
@@ -768,26 +777,45 @@ def test_split_temporal_cv_datetime_column_not_in_features():
 
 # ── A6: Split extensions ───────────────────────────────────────────────────────
 
-@pytest.mark.skip(reason="repeats= removed in v1.1; use ml.cv() without repeats")
 def test_repeated_kfold():
     """repeats= with folds= creates R*K total folds. A6."""
-    pass
+    from ml.split import _split_repeated_cv
+    rng = np.random.RandomState(42)
+    data = pd.DataFrame({
+        "x1": rng.rand(100),
+        "target": rng.rand(100),
+    })
+    cv = _split_repeated_cv(data=data, target="target", folds=3, repeats=2, seed=42,
+                            stratify=False, task="auto")
+    assert isinstance(cv, ml.CVResult)
+    assert cv.k == 6  # 3 folds × 2 repeats
 
 
-@pytest.mark.skip(reason="repeats= removed in v1.1; use ml.cv() without repeats")
 def test_repeated_stratified():
     """Stratified repeated K-fold for classification target. A6."""
-    pass
+    from ml.split import _split_repeated_cv
+    rng = np.random.RandomState(42)
+    data = pd.DataFrame({
+        "x1": rng.rand(120),
+        "target": rng.choice(["a", "b"], 120),
+    })
+    cv = _split_repeated_cv(data=data, target="target", folds=3, repeats=2, seed=42,
+                            stratify=True, task="auto")
+    assert isinstance(cv, ml.CVResult)
+    assert cv.k == 6
 
 
-@pytest.mark.skip(reason="repeats= removed in v1.1; use ml.cv() without repeats")
 def test_repeated_requires_folds():
     """repeats= without folds= raises ConfigError. A6."""
-    pass
+    rng = np.random.RandomState(42)
+    data = pd.DataFrame({"x": rng.rand(50), "target": rng.choice([0, 1], 50)})
+    # split(repeats=) now raises ConfigError about the removed parameter
+    with pytest.raises(ml.ConfigError):
+        ml.split(data=data, target="target", repeats=2, seed=42)
 
 
 def test_stratified_group_kfold():
-    """groups= + stratify=True uses StratifiedGroupKFold. A6."""
+    """groups= + stratify=True uses cv_group() with stratify. A6."""
     rng = np.random.RandomState(42)
     n = 120
     data = pd.DataFrame({
@@ -796,7 +824,7 @@ def test_stratified_group_kfold():
         "group": [f"g{i // 10}" for i in range(n)],  # 12 groups of 10
     })
     s = ml.split_group(data=data, target="target", groups="group", seed=42)
-    cv = ml.cv_group(s, folds=3, groups="group", seed=42)
+    cv = ml.cv_group(s, folds=3, groups="group", stratify=True, seed=42)
     assert isinstance(cv, ml.CVResult)
     assert cv.k == 3
     # No group leaks
@@ -815,7 +843,7 @@ def test_embargo_temporal():
         "target": rng.rand(n),
         "ts": range(n),
     })
-    s = ml.split_temporal(data=data, target="target", time="ts")
+    s = ml.split(data=data, target="target", time="ts")
     cv = ml.cv_temporal(s, folds=3, embargo=5)
     assert isinstance(cv, ml.CVResult)
     # Each fold should have a gap between train end and valid start
@@ -833,7 +861,7 @@ def test_embargo_removes_correct_rows():
         "ts": range(n),
     })
     embargo = 5
-    s = ml.split_temporal(data=data, target="target", time="ts")
+    s = ml.split(data=data, target="target", time="ts")
     cv = ml.cv_temporal(s, folds=3, embargo=embargo)
     for fold_train, fold_valid in cv.folds:
         if len(fold_train) > 0 and len(fold_valid) > 0:
@@ -850,7 +878,7 @@ def test_sliding_window_basic():
         "target": rng.rand(n),
         "ts": range(n),
     })
-    s = ml.split_temporal(data=data, target="target", time="ts")
+    s = ml.split(data=data, target="target", time="ts")
     cv = ml.cv_temporal(s, folds=3, window="sliding", window_size=20)
     assert isinstance(cv, ml.CVResult)
     # Train sets should be fixed size (sliding window)
@@ -862,7 +890,7 @@ def test_sliding_window_size():
     """window='sliding' requires window_size= or raises ConfigError. A6."""
     rng = np.random.RandomState(42)
     data = pd.DataFrame({"x": rng.rand(50), "target": rng.rand(50), "ts": range(50)})
-    s = ml.split_temporal(data=data, target="target", time="ts")
+    s = ml.split(data=data, target="target", time="ts")
     with pytest.raises(ml.ConfigError, match="window_size"):
         ml.cv_temporal(s, folds=3, window="sliding")
 

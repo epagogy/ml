@@ -1,6 +1,6 @@
 """Cross-language parity bridge: Python ml(Rust) vs R ml(Rust).
 
-Both Python and R use the same Rust core (ml-py) for 5 algorithms:
+Both Python and R use the same Rust core (al) for 5 algorithms:
   linear, logistic, random_forest, decision_tree, knn
 
 This benchmark verifies that given IDENTICAL data (via CSV round-trip with %.17g),

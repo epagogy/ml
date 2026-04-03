@@ -1,6 +1,6 @@
 """Tests for balance= parameter in fit().
 
-Class imbalance handling.
+Gate 4: Class imbalance handling.
 Verifies that balance=True improves minority-class recall on imbalanced data.
 """
 

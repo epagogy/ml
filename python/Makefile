@@ -92,7 +92,7 @@ sys.exit(1 if failed else 0)"
 test:
 	$(PYTHON) safe_test_runner.py
 
-# ── Fast: all at once (server only, 16GB+ with no other load) ─────────────────
+# ── Fast: all at once (server only, 16GB+ with no other load) ────────────────
 .PHONY: test-fast
 test-fast:
 	$(PYTEST) tests/ $(OPTS)
@@ -102,27 +102,27 @@ test-fast:
 lint:
 	$(PYTHON) -m ruff check ml/
 
-# ── Hero bug: Docker 1GB cage on server (proves macbook-safe) ─────────────────
+# ── Hero bug: Docker 1GB cage on server (proves macbook-safe) ────────────────
 # Not in `check` — run manually: make cage
 .PHONY: cage
 cage:
 	@echo "Syncing to server..."
-	rsync -az --delete --exclude='__pycache__' --exclude='.pytest_cache' ml/ server:~/ml_test/ml/
-	rsync -az --delete --exclude='__pycache__' --exclude='.pytest_cache' tests/ server:~/ml_test/tests/
+	rsync -az --delete --exclude='__pycache__' --exclude='.pytest_cache' ml/ server:~/ml-dev/ml/
+	rsync -az --delete --exclude='__pycache__' --exclude='.pytest_cache' tests/ server:~/ml-dev/tests/
 	@echo "Building Docker image..."
-	ssh server "cd ~/ml_test && sg docker -c 'docker build -t ml-ml-container .'"
+	ssh server "cd ~/ml-dev && sg docker -c 'docker build -t ml-test-cage .'"
 	@echo "Running in 1GB cage..."
-	ssh server "sg docker -c 'docker run --rm --memory=1g --cpus=1 ml-ml-container'"
+	ssh server "sg docker -c 'docker run --rm --memory=1g --cpus=1 ml-test-cage'"
 	@echo "✓ cage passed — macbook-safe"
 
-# ── Server: full suite unconstrained (Tier 1) ────────────────────────────────
+# ── Server: full suite unconstrained (Tier 1) ───────────────────────────────
 RSYNC_EXCLUDE = --exclude='__pycache__' --exclude='.pytest_cache' --exclude='*.pyc'
-SERVER_ACTIVATE = source ~/ml_test_venv/bin/activate && cd ~/ml_test
+SERVER_ACTIVATE = source ~/ml-dev_venv/bin/activate && cd ~/ml-dev
 
 .PHONY: server-sync
 server-sync:
-	rsync -az --delete $(RSYNC_EXCLUDE) ml/ server:~/ml_test/ml/
-	rsync -az --delete $(RSYNC_EXCLUDE) tests/ server:~/ml_test/tests/
+	rsync -az --delete $(RSYNC_EXCLUDE) ml/ server:~/ml-dev/ml/
+	rsync -az --delete $(RSYNC_EXCLUDE) tests/ server:~/ml-dev/tests/
 
 .PHONY: server
 server: server-sync
@@ -133,13 +133,13 @@ server: server-sync
 test-pbt: server-sync
 	ssh server "$(SERVER_ACTIVATE) && python3 -m pytest tests/test_properties.py tests/test_parallelism.py --timeout=300 -v 2>&1"
 
-# ── Fulltest: public + private tests on server ────────────────────────────────
+# ── Fulltest: public + private tests on server ──────────────────────────────
 .PHONY: fulltest-sync
 fulltest-sync: server-sync
 	rsync -az --delete $(RSYNC_EXCLUDE) \
 		--exclude='benchmark/' --exclude='parity/' --exclude='dataset_sweep/' \
-		../../../private/tests/ server:~/ml_test/private_tests/
-	scp tests/conftest.py server:~/ml_test/conftest.py
+		../../../private/tests/ server:~/ml-dev/private_tests/
+	scp tests/conftest.py server:~/ml-dev/conftest.py
 
 .PHONY: fulltest-quick
 fulltest-quick: fulltest-sync
@@ -172,23 +172,23 @@ golden-refresh:
 	@echo "Capture golden values on server after rebuilding Rust binary:"
 	@echo "  rsync then: ssh server '$(SERVER_ACTIVATE) && python3 -c \\"
 	@echo "    import ml, json, numpy as np, pandas as pd; ..."
-	@echo "Then update pinned values in tests/test_benchmark_correctness.py golden sections"
+	@echo "Then update pinned values in tests/test_benchmark_correctness.py §14.6-§14.7"
 	@echo "Commit: test: update golden values for <algorithm> — <reason>"
 
 .PHONY: check
 check: lint test-safe
 
-# ── Benchmarks: Grammar of Benchmarks ─────────────────────────────────────
+# ── Benchmarks: Benchmark Suite ───────────────────────────────────────────
 .PHONY: bench-engines bench-parity-bridge bench-dev bench-all
 
 bench-engines: server-sync
-	rsync -az $(RSYNC_EXCLUDE) benchmarks/ server:~/ml_test/benchmarks/
-	ssh server "$(SERVER_ACTIVATE) && RAYON_NUM_THREADS=1 python3 benchmarks/bench_engines.py --server --seed-instability --json --output benchmarks/engines.json 2>&1"
-	rsync server:~/ml_test/benchmarks/engines.json benchmarks/engines.json
+	rsync -az $(RSYNC_EXCLUDE) benchmarks/ server:~/ml-dev/benchmarks/
+	ssh server "$(SERVER_ACTIVATE) && RAYON_NUM_THREADS=1 python3 benchmarks/bench_engines.py --large --seed-instability --json --output benchmarks/engines.json 2>&1"
+	rsync server:~/ml-dev/benchmarks/engines.json benchmarks/engines.json
 
 bench-parity-bridge:
 	RAYON_NUM_THREADS=1 $(PYTHON) benchmarks/bench_parity_bridge.py --json --output benchmarks/parity_bridge.json
 
 bench-dev: server-sync
-	rsync -az $(RSYNC_EXCLUDE) benchmarks/ server:~/ml_test/benchmarks/
+	rsync -az $(RSYNC_EXCLUDE) benchmarks/ server:~/ml-dev/benchmarks/
 	ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=20 server "$(SERVER_ACTIVATE) && RAYON_NUM_THREADS=1 python3 benchmarks/bench_dev.py 2>&1"

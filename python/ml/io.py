@@ -154,7 +154,7 @@ def save(model: Model | Embedder, path: str) -> str:
         vectorizer_parts = {
             "vocabulary_": {str(k): int(v) for k, v in vec.vocabulary_.items()},
             "idf_": vec.idf_.tolist(),
-            "max_features": vec.max_features,
+            "max_features": getattr(vec, "max_features", None),
         }
         # Store vectors as columns dict + column names (avoid DataFrame Cython)
         vectors_data = {
@@ -176,7 +176,7 @@ def save(model: Model | Embedder, path: str) -> str:
             vectorizer_parts[col] = {
                 "vocabulary_": {str(k): int(v) for k, v in vec.vocabulary_.items()},
                 "idf_": vec.idf_.tolist(),
-                "max_features": vec.max_features,
+                "max_features": getattr(vec, "max_features", None),
             }
         save_dict = {
             "__type__": "Tokenizer",
@@ -264,7 +264,7 @@ def save(model: Model | Embedder, path: str) -> str:
                     vp[col] = {
                         "vocabulary_": {str(k): int(v) for k, v in vec.vocabulary_.items()},
                         "idf_": vec.idf_.tolist(),
-                        "max_features": vec.max_features,
+                        "max_features": getattr(vec, "max_features", None),
                     }
                 steps_data.append({
                     "__step_type__": "Tokenizer",

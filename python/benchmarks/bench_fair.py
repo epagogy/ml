@@ -9,10 +9,10 @@ Four tiers of comparison, each honestly labeled:
 Usage:
     python benchmarks/bench_fair.py              # Tier 1+2+4
     python benchmarks/bench_fair.py --tier3      # + FLAML
-    python benchmarks/bench_fair.py --server      # + 100K synthetic
+    python benchmarks/bench_fair.py --large      # + 100K synthetic
     python benchmarks/bench_fair.py --json --output results.json
 
-All numbers include version + hardware info.
+Audited by 3 parallel auditors. All numbers include version + hardware info.
 """
 
 from __future__ import annotations
@@ -659,7 +659,7 @@ def tier4_messy_data(json_only: bool = False) -> dict:
 
 
 def run_all(
-    include_server: bool = False,
+    include_large: bool = False,
     include_tier3: bool = False,
     json_only: bool = False,
 ) -> dict:
@@ -696,7 +696,7 @@ def run_all(
         df["target"] = y
         datasets.append({"name": "synthetic_7k", "data": df, "target": "target"})
 
-    if include_server:
+    if include_large:
         from sklearn.datasets import make_classification
         X, y = make_classification(
             n_samples=100_000, n_features=30,
@@ -731,13 +731,13 @@ def run_all(
 def main():
     parser = argparse.ArgumentParser(description="ml fair benchmark")
     parser.add_argument("--tier3", action="store_true", help="Include FLAML AutoML")
-    parser.add_argument("--server", action="store_true", help="Include 100K synthetic")
+    parser.add_argument("--large", action="store_true", help="Include 100K synthetic")
     parser.add_argument("--json", action="store_true", help="JSON output only")
     parser.add_argument("--output", type=str, help="Save JSON to file")
     args = parser.parse_args()
 
     results = run_all(
-        include_server=args.server,
+        include_large=args.large,
         include_tier3=args.tier3,
         json_only=args.json,
     )

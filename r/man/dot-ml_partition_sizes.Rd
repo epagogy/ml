@@ -3,12 +3,12 @@
 \name{.ml_partition_sizes}
 \alias{.ml_partition_sizes}
 \title{Canonical partition sizes: c(n_train, n_valid, n_test).
-Uses round(n * ratio) -- matches Python.}
+Uses round(n * ratio) -- matches Python and Julia.}
 \usage{
 .ml_partition_sizes(n, ratio = c(0.6, 0.2, 0.2))
 }
 \description{
 Canonical partition sizes: c(n_train, n_valid, n_test).
-Uses round(n * ratio) -- matches Python.
+Uses round(n * ratio) -- matches Python and Julia.
 }
 \keyword{internal}

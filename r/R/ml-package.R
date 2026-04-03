@@ -67,8 +67,8 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @importFrom cli cli_abort cli_warn
-#' @importFrom rlang abort hash
+#' @import cli
+#' @import rlang
 #' @importFrom stats predict sd median var coef setNames complete.cases
 #' @importFrom utils packageVersion
 #' @importFrom withr local_seed

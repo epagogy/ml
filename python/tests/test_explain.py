@@ -137,11 +137,11 @@ def test_explain_histgradient_works():
     assert len(imp) == 2
 
 
-# ── SHAP + permutation importance ────────────────────────────────────────
+# ── A7: SHAP + permutation importance ────────────────────────────────────────
 
 
 def test_explain_permutation(small_classification_data):
-    """explain(method='permutation') returns unbiased importance scores.."""
+    """explain(method='permutation') returns unbiased importance scores. A7."""
     s = ml.split(data=small_classification_data, target="target", seed=42)
     import warnings
     with warnings.catch_warnings():
@@ -161,7 +161,7 @@ def test_explain_permutation(small_classification_data):
 
 
 def test_explain_data_required(small_classification_data):
-    """explain(method='permutation') raises ConfigError when data= is missing.."""
+    """explain(method='permutation') raises ConfigError when data= is missing. A7."""
     s = ml.split(data=small_classification_data, target="target", seed=42)
     import warnings
     with warnings.catch_warnings():
@@ -173,7 +173,7 @@ def test_explain_data_required(small_classification_data):
 
 
 def test_explain_permutation_bias_warning_with_correlated():
-    """explain(method='permutation') warns about correlated features."""
+    """explain(method='permutation') warns about correlated features. A7 (Puget C5)."""
     import warnings
 
     import numpy as np
@@ -200,7 +200,7 @@ def test_explain_permutation_bias_warning_with_correlated():
 
 @pytest.mark.slow
 def test_explain_shap_tree(small_classification_data):
-    """explain(method='shap') works for tree models when shap is installed.."""
+    """explain(method='shap') works for tree models when shap is installed. A7."""
     pytest.importorskip("shap")
     s = ml.split(data=small_classification_data, target="target", seed=42)
     import warnings
@@ -216,9 +216,8 @@ def test_explain_shap_tree(small_classification_data):
     assert "feature" in imp.columns
 
 
-@pytest.mark.skip(reason="SHAP incompatible with Rust _LogisticModel")
 def test_explain_shap_linear(small_classification_data):
-    """explain(method='shap') works for linear models when shap is installed..
+    """explain(method='shap') works for linear models when shap is installed. A7.
 
     SHAP must be able to introspect the underlying model. Our _LogisticModel
     wrapper may not be recognized by all SHAP versions — use tree-based model
@@ -241,7 +240,7 @@ def test_explain_shap_linear(small_classification_data):
 
 
 def test_explain_shap_not_installed(small_classification_data, monkeypatch):
-    """explain(method='shap') raises ConfigError when shap is not installed.."""
+    """explain(method='shap') raises ConfigError when shap is not installed. A7."""
     import sys
 
     s = ml.split(data=small_classification_data, target="target", seed=42)
@@ -264,12 +263,12 @@ def test_explain_shap_not_installed(small_classification_data, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Grouped permutation importance
+# Chain 4.7: Grouped permutation importance
 # ---------------------------------------------------------------------------
 
 
 def test_explain_grouped_permutation(small_classification_data):
-    """explain(feature_groups=) returns one row per group."""
+    """explain(feature_groups=) returns one row per group. Chain 4.7."""
     import warnings
     s = ml.split(data=small_classification_data, target="target", seed=42)
     with warnings.catch_warnings():
@@ -293,7 +292,7 @@ def test_explain_grouped_permutation(small_classification_data):
 
 
 def test_explain_grouped_permutation_requires_data(small_classification_data):
-    """explain(feature_groups=) without data= raises ConfigError."""
+    """explain(feature_groups=) without data= raises ConfigError. Chain 4.7."""
     import warnings
     s = ml.split(data=small_classification_data, target="target", seed=42)
     with warnings.catch_warnings():

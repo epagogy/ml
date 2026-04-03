@@ -345,7 +345,8 @@ def test_encode_target_cv_alignment():
         "label": rng.choice([0, 1], n),
     })
     s = ml.split(data=data, target="label", seed=42)
-    cv = ml.cv(s, folds=5, seed=42)
+    _s_cv = ml.split(data=data, target="label", seed=42)
+    cv = ml.cv(_s_cv, folds=5, seed=42)
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -461,12 +462,12 @@ def test_frequency_multiple_columns(cat_df):
 
 
 # ---------------------------------------------------------------------------
-# WOE encoding
+# Chain 4.1: WOE encoding
 # ---------------------------------------------------------------------------
 
 
 def test_woe_basic():
-    """encode(method='woe') returns Encoder with float-valued column."""
+    """encode(method='woe') returns Encoder with float-valued column. Chain 4.1."""
     rng = np.random.RandomState(42)
     n = 200
     data = pd.DataFrame({
@@ -482,7 +483,7 @@ def test_woe_basic():
 
 
 def test_woe_iv_scores():
-    """encode(method='woe') stores non-negative IV score per column."""
+    """encode(method='woe') stores non-negative IV score per column. Chain 4.1."""
     rng = np.random.RandomState(42)
     n = 300
     data = pd.DataFrame({
@@ -495,7 +496,7 @@ def test_woe_iv_scores():
 
 
 def test_woe_unseen_zero():
-    """Unseen categories map to 0.0 (neutral evidence)."""
+    """Unseen categories map to 0.0 (neutral evidence). Chain 4.1."""
     rng = np.random.RandomState(42)
     n = 100
     train = pd.DataFrame({
@@ -513,7 +514,7 @@ def test_woe_unseen_zero():
 
 
 def test_woe_requires_binary():
-    """encode(method='woe') raises ConfigError for non-binary target."""
+    """encode(method='woe') raises ConfigError for non-binary target. Chain 4.1."""
     rng = np.random.RandomState(42)
     data = pd.DataFrame({
         "city": rng.choice(["NYC", "LA", "Chicago"], 100),

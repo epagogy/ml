@@ -14,8 +14,8 @@ build/
 .Rproj.user/
 *.Rcheck/
 ..Rcheck/
-r/man/*.Rd.bak
-r/*.tar.gz
+ml/r/man/*.Rd.bak
+ml/r/*.tar.gz
 Rplots.pdf
 
 # Rust
@@ -34,9 +34,9 @@ logs.log
 # Build artifacts
 catboost_info/
 
-# Internal development docs
+# Strategy docs
+# These stay in the private monorepo, excluded from PyPI and public GitHub
 SPEC_*.md
 BRAND.md
 CLAUDE.md
 .claude/
-ml_0.1.0.tar.gz

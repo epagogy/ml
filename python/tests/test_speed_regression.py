@@ -1,4 +1,5 @@
-"""Speed regression bounds
+"""Speed regression bounds — Chain 20.
+
 Absolute time limits per algorithm on 1K rows. Detects CATASTROPHIC regressions
 (10× slowdown), not precision optimization. Passes on any reasonably fast machine.
 
@@ -101,7 +102,7 @@ def test_speed_bound(algorithm, task, bound_s):
     """ml.fit + ml.predict on 1K rows within bound. Detects catastrophic regressions.
 
     ML_SPEED_FACTOR scales all bounds for environment calibration:
-    - server:   ML_SPEED_FACTOR=1.0  (default, calibration baseline)
+    - server:  ML_SPEED_FACTOR=1.0  (default, calibration baseline)
     - macbook: ML_SPEED_FACTOR=2.0  (ARM, slower for Rust initialization)
     - slow CI: ML_SPEED_FACTOR=3.0  (shared runners, noisy neighbors)
     """

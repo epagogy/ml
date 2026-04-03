@@ -106,7 +106,7 @@ def test_duck_typed_to_pandas():
 def test_lightgbm_narrow_data_no_force_col_wise():
     """LightGBM does NOT set force_col_wise for narrow data (<=500 features).
 
-    Fix: unconditional force_col_wise degrades performance on narrow
+    Chain 1 fix: unconditional force_col_wise degrades performance on narrow
     datasets. Now only set when X.shape[1] > 500 (in fit.py, not _engines.py).
     """
     rng = np.random.RandomState(42)
@@ -214,8 +214,7 @@ def test_weights_cv():
         "y": rng.choice([0, 1], 100),
         "w": rng.rand(100) + 0.1,
     })
-    s = ml.split(df, "y", seed=42)
-    cv = ml.cv(s, folds=3, seed=42)
+    cv = ml.split(df, "y", folds=3, seed=42)
     model = ml.fit(cv, "y", weights="w", seed=42)
     assert model.task == "classification"
     assert "w" not in model.features
@@ -252,8 +251,7 @@ def test_group_cv_no_leakage():
         "x": rng.rand(100),
         "y": rng.choice([0, 1], 100),
     })
-    s = ml.split_group(df, "y", groups="patient", seed=42)
-    cv = ml.cv_group(s, folds=5, groups="patient", seed=42)
+    cv = ml.split(df, "y", groups="patient", folds=5, seed=42)
 
     assert cv.k == 5
     for fold_train, fold_valid in cv.folds:
@@ -265,17 +263,14 @@ def test_group_cv_no_leakage():
 def test_group_cv_too_many_folds():
     """groups= CV with more folds than groups gives clear error."""
     rng = np.random.RandomState(42)
-    # Need enough groups for holdout split (at least 5), but few enough
-    # that folds=10 exceeds dev groups
-    patients = np.repeat(range(6), 10)
+    patients = np.repeat(range(3), 10)
     df = pd.DataFrame({
         "patient": patients,
-        "x": rng.rand(60),
-        "y": rng.choice([0, 1], 60),
+        "x": rng.rand(30),
+        "y": rng.choice([0, 1], 30),
     })
-    s = ml.split_group(df, "y", groups="patient", seed=42)
-    with pytest.raises(ml.DataError):
-        ml.cv_group(s, folds=10, groups="patient", seed=42)
+    with pytest.raises(ml.DataError, match="3 groups"):
+        ml.split(df, "y", groups="patient", folds=5, seed=42)
 
 
 def test_group_missing_column():
@@ -338,8 +333,7 @@ def test_patients_groups_no_leakage():
 def test_patients_groups_cv():
     """patients dataset works with groups= CV."""
     p = ml.dataset("patients")
-    s = ml.split_group(p, "readmitted", groups="patient_id", seed=42)
-    cv = ml.cv_group(s, folds=5, groups="patient_id", seed=42)
+    cv = ml.split(p, "readmitted", groups="patient_id", folds=5, seed=42)
     assert cv.k == 5
 
 

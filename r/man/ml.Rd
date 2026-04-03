@@ -5,13 +5,10 @@
 \alias{ml}
 \title{The ml module — all verbs accessed via ml$verb()}
 \format{
-A locked environment with verb entries.
+A locked environment with 22 verb entries.
 }
 \usage{
 ml
-}
-\value{
-A locked environment providing module-style access to all ml verbs.
 }
 \description{
 Provides the module-style interface \code{ml$verb()} as an alternative to the

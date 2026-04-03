@@ -1,11 +1,12 @@
-"""Property-based tests
+"""Property-based tests — Chain 21.
+
 Uses Hypothesis to verify invariants hold across a wide range of inputs.
 These catch edge cases that hand-crafted tests miss.
 
-Predict output shape invariance (any valid n, p)
-Probability simplex invariance (proba sums to 1 always)
-Idempotent refit (same seed + data = same predictions)
-Constant target baseline (y constant → regression predicts that constant)
+§21.1  Predict output shape invariance (any valid n, p)
+§21.2  Probability simplex invariance (proba sums to 1 always)
+§21.3  Idempotent refit (same seed + data = same predictions)
+§21.4  Constant target baseline (y constant → regression predicts that constant)
 """
 
 import warnings
@@ -27,7 +28,7 @@ _PBT_SETTINGS = settings(
 )
 
 
-# ── Predict output shape invariance ────────────────────────────────────
+# ── §21.1  Predict output shape invariance ────────────────────────────────────
 
 @given(
     n=st.integers(min_value=20, max_value=150),
@@ -55,7 +56,7 @@ def test_predict_shape_invariance(n, p, seed):
     )
 
 
-# ── Probability simplex invariance ─────────────────────────────────────
+# ── §21.2  Probability simplex invariance ─────────────────────────────────────
 
 @given(
     n=st.integers(min_value=30, max_value=200),
@@ -84,7 +85,7 @@ def test_probability_simplex_logistic(n, seed):
     )
 
 
-# ── Idempotent refit ────────────────────────────────────────────────────
+# ── §21.3  Idempotent refit ────────────────────────────────────────────────────
 
 @given(
     n=st.integers(min_value=30, max_value=150),
@@ -113,7 +114,7 @@ def test_idempotent_refit(n, seed):
     )
 
 
-# ── Constant regression target baseline ────────────────────────────────
+# ── §21.4  Constant regression target baseline ────────────────────────────────
 
 @given(
     n=st.integers(min_value=30, max_value=150),
@@ -150,7 +151,7 @@ def test_constant_target_baseline_reg(n, const, seed):
     )
 
 
-# ── Evaluate returns floats ────────────────────────────────────────────
+# ── §21.5  Evaluate returns floats ────────────────────────────────────────────
 
 @given(
     n=st.integers(min_value=30, max_value=150),

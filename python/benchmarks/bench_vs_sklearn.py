@@ -258,21 +258,21 @@ def test_timing():
     cases = [
         (
             "RF classification (churn)",
-            lambda: (lambda s: ml.evaluate(ml.fit(s.train, "churn", algorithm="random_forest", seed=42), s.valid))(
+            lambda: (lambda s: ml.evaluate(ml.fit(s.train, "churn", algorithm="random_forest", seed=42), s.test))(
                 ml.split(churn, "churn", seed=42)
             ),
             lambda: _sklearn_rf_churn(churn, "churn"),
         ),
         (
             "Logistic classification (cancer)",
-            lambda: (lambda s: ml.evaluate(ml.fit(s.train, "diagnosis", algorithm="logistic", seed=42), s.valid))(
+            lambda: (lambda s: ml.evaluate(ml.fit(s.train, "diagnosis", algorithm="logistic", seed=42), s.test))(
                 ml.split(cancer, "diagnosis", seed=42)
             ),
             lambda: _sklearn_logistic_cancer(cancer, "diagnosis"),
         ),
         (
             "RF regression (tips)",
-            lambda: (lambda s: ml.evaluate(ml.fit(s.train, "tip", algorithm="random_forest", seed=42), s.valid))(
+            lambda: (lambda s: ml.evaluate(ml.fit(s.train, "tip", algorithm="random_forest", seed=42), s.test))(
                 ml.split(tips, "tip", seed=42)
             ),
             lambda: _sklearn_rf_tips(tips, "tip"),

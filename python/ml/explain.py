@@ -1,7 +1,7 @@
 """Explain model predictions via feature importance.
 
-Native feature importance (tree MDI, linear coefficients).
-SHAP values (method="shap") and permutation importance (method="permutation").
+Gate 1: Native feature importance (tree MDI, linear coefficients).
+A7:     SHAP values (method="shap") and permutation importance (method="permutation").
 """
 
 from __future__ import annotations
@@ -102,7 +102,7 @@ def explain(
     if isinstance(model, TuningResult):
         model = model.best_model
 
-    # Grouped permutation importance
+    # Grouped permutation importance (Chain 4.7)
     if feature_groups is not None:
         if data is None:
             raise ConfigError(
@@ -293,7 +293,7 @@ def _explain_permutation(model: Model, data: pd.DataFrame, seed: int | None) -> 
 
     feature_names = _get_encoded_feature_names(model)
 
-    # Warn if correlated features detected (permutation bias)
+    # Warn if correlated features detected (Puget C5 bias)
     if len(X.columns) >= 2:
         corr = X.corr().abs()
         # Upper triangle excluding diagonal
@@ -406,7 +406,7 @@ def _explain_grouped_permutation(
     """Grouped permutation importance — permutes all features in a group simultaneously.
 
     Avoids the underestimation bias that occurs when shuffling one correlated
-    feature while leaving its partner intact.
+    feature while leaving its partner intact (Puget C5).
     """
     import numpy as np
 

@@ -43,7 +43,7 @@ multiclass_data <- function() {
 }
 
 # ---------------------------------------------------------------------------
-# Workflow 1: split -> fit -> predict -> evaluate -> assess
+# Chain 1: split -> fit -> predict -> evaluate -> assess
 # ---------------------------------------------------------------------------
 
 test_that("chain1: full workflow classification", {
@@ -104,7 +104,7 @@ test_that("chain1: train accuracy >= valid - 0.05 (overfitting signal)", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 2: save -> load -> predict (roundtrip)
+# Chain 2: save -> load -> predict (roundtrip)
 # ---------------------------------------------------------------------------
 
 test_that("chain2: save/load roundtrip — predictions identical", {
@@ -157,7 +157,7 @@ test_that("chain2: loaded model accepts test partition", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 3: tune -> fit -> predict (hyperparameter transfer)
+# tune -> fit -> predict (hyperparameter transfer)
 # ---------------------------------------------------------------------------
 
 test_that("chain3: tune random_forest then fit with best_params", {
@@ -218,7 +218,7 @@ test_that("chain3: tune result is a tuning_result with best model", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 4: screen -> fit -> compare
+# Chain 4: screen -> fit -> compare
 # ---------------------------------------------------------------------------
 
 test_that("chain4: screen then fit top algorithm", {
@@ -245,7 +245,7 @@ test_that("chain4: compare two algorithms returns leaderboard", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 5: fit -> explain -> validate
+# Chain 5: fit -> explain -> validate
 # ---------------------------------------------------------------------------
 
 test_that("chain5: explain feature names come from input data", {
@@ -275,7 +275,7 @@ test_that("chain5: validate rules fail (impossible bar)", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 6: fit -> calibrate -> predict
+# Chain 6: fit -> calibrate -> predict
 # ---------------------------------------------------------------------------
 
 test_that("chain6: calibrate then predict — same length as input", {
@@ -310,7 +310,7 @@ test_that("chain6: calibrate proba rows sum to 1.0", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 7: drift (monitoring)
+# Chain 7: drift (monitoring)
 # ---------------------------------------------------------------------------
 
 test_that("chain7: drift — same data produces no drift", {
@@ -330,7 +330,7 @@ test_that("chain7: drift — massive shift detected", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 8: stack -> evaluate/predict
+# Chain 8: stack -> evaluate/predict
 # ---------------------------------------------------------------------------
 
 test_that("chain8: stack then evaluate returns accuracy", {
@@ -350,7 +350,7 @@ test_that("chain8: stack then predict — correct length", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 9: cross-algorithm consistency
+# Chain 9: cross-algorithm consistency
 # ---------------------------------------------------------------------------
 
 test_that("chain9: all classification algorithms produce correct-length predictions", {
@@ -404,7 +404,7 @@ test_that("chain9: seed reproducibility — two identical seeds = identical pred
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 10: edge case transitions
+# Chain 10: edge case transitions
 # ---------------------------------------------------------------------------
 
 test_that("chain10: predict tolerates extra columns in newdata", {
@@ -466,7 +466,7 @@ test_that("chain10: assess peeking prevention — second assess errors", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 11: cv -> fit -> evaluate
+# Chain 11: cv -> fit -> evaluate
 # ---------------------------------------------------------------------------
 
 test_that("chain11: ml_cv result feeds directly into ml_fit", {
@@ -501,7 +501,7 @@ test_that("chain11: ml_cv_temporal folds preserve time ordering", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 13: shelf (model staleness monitoring)
+# Chain 13: shelf (model staleness monitoring)
 # ---------------------------------------------------------------------------
 
 test_that("chain13: shelf fresh on same distribution", {
@@ -525,7 +525,7 @@ test_that("chain13: shelf returns metrics_now", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 18: temporal workflow
+# Chain 18: temporal workflow
 # ---------------------------------------------------------------------------
 
 test_that("chain18: temporal split then fit predict", {
@@ -563,7 +563,7 @@ test_that("chain18: temporal cv then fit", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 19: calibrate -> save -> load (calibrated roundtrip)
+# Chain 19: calibrate -> save -> load (calibrated roundtrip)
 # ---------------------------------------------------------------------------
 
 test_that("chain19: calibrated model survives save/load cycle", {
@@ -592,7 +592,7 @@ test_that("chain19: calibrated model survives save/load cycle", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 20: tune -> stack (tuned models compose into ensemble)
+# Chain 20: tune -> stack (tuned models compose into ensemble)
 # ---------------------------------------------------------------------------
 
 test_that("chain20: tune then stack does not error", {
@@ -606,7 +606,7 @@ test_that("chain20: tune then stack does not error", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 21: quick (one-liner convenience)
+# Chain 21: quick (one-liner convenience)
 # ---------------------------------------------------------------------------
 
 test_that("chain21: quick classification returns model and metrics", {
@@ -625,7 +625,7 @@ test_that("chain21: quick regression returns model and metrics", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 23: profile -> check_data -> leak (data quality trifecta)
+# Chain 23: profile -> check_data -> leak (data quality trifecta)
 # ---------------------------------------------------------------------------
 
 test_that("chain23: profile returns non-null result", {
@@ -657,7 +657,7 @@ test_that("chain23: leak detects perfect copy of target", {
 })
 
 # ---------------------------------------------------------------------------
-# Workflow 24: enough (sample size check)
+# Chain 24: enough (sample size check)
 # ---------------------------------------------------------------------------
 
 test_that("chain24: enough returns ml_enough_result", {

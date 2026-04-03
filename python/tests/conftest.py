@@ -42,20 +42,41 @@ except ImportError:
 
 
 @pytest.fixture(autouse=True)
+def _fresh_registry():
+    """Clear the provenance registry, breadcrumbs, and guards between tests.
+
+    The session-scoped PartitionRegistry tracks assessed partitions.
+    Without clearing, test A's assess() marks a partition as spent,
+    causing test B's assess() on different data (but same fingerprint
+    after re-split with same seed) to fail with PartitionError.
+
+    Breadcrumb files (.ml_assessed/) also cleared for test isolation.
+
+    Guards reset to "off" — tests that set guards="strict" may crash before
+    restoring, leaving strict mode active for all subsequent tests.
+    """
+    import shutil
+
+    from ml._provenance import _BREADCRUMB_DIR, _registry
+    _registry.clear()
+    if _BREADCRUMB_DIR.exists():
+        shutil.rmtree(_BREADCRUMB_DIR, ignore_errors=True)
+    ml.config(guards="off")
+    yield
+    _registry.clear()
+    if _BREADCRUMB_DIR.exists():
+        shutil.rmtree(_BREADCRUMB_DIR, ignore_errors=True)
+    ml.config(guards="off")
+
+
+@pytest.fixture(autouse=True)
 def _gc_after_test():
     """Force garbage collection after every test.
 
     Prevents memory accumulation on constrained hardware (macbook Air 16GB,
     CI runners with 7GB). Cost: ~1ms per test. Prevents: OOM death spiral
     on systems without Linux OOM killer (macOS).
-
-    Also resets guards to "off" — some tests set guards="strict" and state
-    leaks into subsequent test files via the global _CONFIG dict.
     """
-    ml.config(guards="off")
-    # Clear assessed set — per-holdout tracking must not leak between tests
-    from ml._provenance import _registry
-    _registry._assessed.clear()
     yield
     # Close matplotlib figures (Agg buffer accumulation across tests)
     try:

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlw"
-version = "1.1.2"
+version = "1.2.0"
 description = "ML that works. One import, the Hastie workflow in code."
 readme = "README.md"
 license = "MIT"
@@ -29,6 +29,7 @@ dependencies = [
     "pandas>=2.0,<3.0",
     "numpy>=1.24,<3.0",
     "skops>=0.9,<2.0",
+    "ml-py>=1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -42,7 +43,6 @@ shap = ["shap>=0.42"]
 tabpfn = ["tabpfn>=0.1,<2.0"]
 plots = ["matplotlib>=3.5"]
 polars = ["narwhals>=1.0"]
-rust = ["ml-py>=1.0.0"]
 all = [
     "scikit-learn>=1.4,<2.0", "scipy>=1.10",
     "xgboost>=2.0", "lightgbm>=4.0", "catboost>=1.2",

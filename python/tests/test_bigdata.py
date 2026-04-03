@@ -1,6 +1,6 @@
 """Big data stress tests — Phase 3.
 
-All tests marked @slow. Run on CI server only:
+All tests marked @slow. Run on server only:
     pytest tests/test_bigdata.py -v --timeout=300
 
 These prove ml handles production-scale data without OOM or correctness loss.

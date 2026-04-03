@@ -84,4 +84,5 @@ def prepare(
         state=state,
         target=target,
         task=detected_task,
+        _target_values=y,
     )
