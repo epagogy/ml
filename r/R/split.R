@@ -1,4 +1,4 @@
-# ── Safe index sequence (R's seq(a, b) returns descending when a > b)
+# ── Safe index sequence (P0-1 fix: R's seq(a, b) returns descending when a > b)
 .safe_seq <- function(from, to) {
   if (from > to) return(integer(0))
   seq.int(from, to)
@@ -136,7 +136,7 @@ ml_split <- function(data, target = NULL, seed = NULL,
     valid_idx <- .safe_seq(n_train + 1L, n_train + n_valid)
     test_idx  <- .safe_seq(n_train + n_valid + 1L, n)
 
-    # Guard empty partitions
+    # P0-2: guard empty partitions
     if (length(test_idx) == 0L) {
       data_error("Test partition is empty. Increase n or adjust ratio.")
     }
@@ -213,7 +213,7 @@ ml_split <- function(data, target = NULL, seed = NULL,
     }
     folds <- as.integer(folds)
 
-    # Hold out test first (terminal boundary)
+    # Hold out test first (C2/T: terminal boundary)
     test_ratio <- ratio[3]
     n <- nrow(data)
     n_test <- max(1L, round(n * test_ratio))
@@ -244,7 +244,7 @@ ml_split <- function(data, target = NULL, seed = NULL,
     # so without this, non-stratified fold assignment would be non-deterministic.
     withr::local_seed(seed)
 
-    # Stratified k-fold on dev (preserve class ratio)
+    # Stratified k-fold on dev (C8: preserve class ratio)
     y_dev <- if (!is.null(y)) y[dev_idx] else NULL
     if (!is.null(y_dev) && stratify && task == "classification") {
       fold_ids <- .stratified_kfold(y_dev, folds)
@@ -329,7 +329,7 @@ ml_split <- function(data, target = NULL, seed = NULL,
     test_idx  <- perm[.safe_seq(n_train + n_valid + 1L, n)]
   }
 
-  # Guard empty partitions
+  # P0-2: guard empty partitions
   if (length(test_idx) == 0L) {
     data_error("Test partition is empty. Increase n or adjust ratio.")
   }
@@ -350,7 +350,7 @@ ml_split <- function(data, target = NULL, seed = NULL,
   if (folds < 2L) config_error("folds must be an integer >= 2")
   n <- nrow(data)
 
-  # Hold out test from END of time series (terminal boundary)
+  # Hold out test from END of time series (C2/T: terminal boundary)
   test_ratio <- ratio[3]
   n_test <- max(1L, round(n * test_ratio))
   n_dev  <- n - n_test
@@ -392,7 +392,7 @@ ml_split <- function(data, target = NULL, seed = NULL,
   unique_grps <- sort(unique_grps)
   n_grps <- length(unique_grps)
 
-  # Hold out test groups (terminal boundary + group integrity)
+  # Hold out test groups (C2/T: terminal boundary + C7: group integrity)
   test_ratio <- ratio[3]
   n_test_grps <- max(1L, round(n_grps * test_ratio))
   n_dev_grps  <- n_grps - n_test_grps
@@ -496,7 +496,7 @@ ml_split_group <- function(data, target = NULL, groups, seed = NULL,
               time = NULL, groups = groups)
 }
 
-# ── Stratified k-fold assignment (preserve class ratio per fold) ─────────
+# ── Stratified k-fold assignment (C8: preserve class ratio per fold) ─────────
 
 .stratified_kfold <- function(y, k) {
   n <- length(y)
@@ -512,7 +512,7 @@ ml_split_group <- function(data, target = NULL, groups, seed = NULL,
   fold_ids
 }
 
-# ── Stratified dev/test partition (preserve class ratio in test holdout) ─
+# ── Stratified dev/test partition (C8: preserve class ratio in test holdout) ─
 
 .stratified_partition <- function(y, test_ratio, seed) {
   n <- length(y)

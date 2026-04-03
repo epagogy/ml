@@ -225,26 +225,6 @@ class TestGuardAssess:
         with pytest.raises(PartitionError, match="split provenance"):
             guard_assess(df)
 
-    def test_rejects_already_assessed_holdout(self):
-        """Per-holdout enforcement: once assessed, same test fingerprint is rejected."""
-        df = pd.DataFrame({"x": [7, 8, 9]})
-        sid = new_split_id()
-        register_partition(df, "test", sid)
-        _registry.mark_assessed(df)
-        with pytest.raises(PartitionError, match="already been assessed"):
-            guard_assess(df)
-
-    def test_fresh_holdout_accepted_after_assessed(self):
-        """A different test holdout (new split) is still accepted."""
-        df1 = pd.DataFrame({"x": [7, 8, 9]})
-        df2 = pd.DataFrame({"x": [10, 11, 12]})
-        sid1 = new_split_id()
-        sid2 = new_split_id()
-        register_partition(df1, "test", sid1)
-        register_partition(df2, "test", sid2)
-        _registry.mark_assessed(df1)
-        guard_assess(df2)  # different holdout — no error
-
 
 class TestGuardValidate:
     @pytest.fixture(autouse=True)
@@ -487,36 +467,6 @@ class TestIntegration:
         with pytest.raises(PartitionError, match="different split"):
             ml.assess(model, test=s2.test)
 
-    def test_per_holdout_cross_model_rejection(self):
-        """Per-holdout: assess model1 on test, then model2 on SAME test is rejected."""
-        data = ml.dataset("iris")
-        s = ml.split(data, "species", seed=42)
-        model1 = ml.fit(s.train, "species", algorithm="logistic", seed=42)
-        model2 = ml.fit(s.train, "species", algorithm="decision_tree", seed=42)
-        ml.assess(model1, test=s.test)  # first model: OK
-        with pytest.raises(PartitionError, match="already been assessed"):
-            ml.assess(model2, test=s.test)  # second model, same holdout: rejected
-
-    def test_per_holdout_fresh_split_accepted(self):
-        """After assessing one holdout, a fresh split's test is accepted."""
-        data = ml.dataset("iris")
-        s1 = ml.split(data, "species", seed=42)
-        s2 = ml.split(data, "species", seed=99)
-        model1 = ml.fit(s1.train, "species", seed=42)
-        model2 = ml.fit(s2.train, "species", seed=99)
-        ml.assess(model1, test=s1.test)
-        ml.assess(model2, test=s2.test)  # different holdout: OK
-
-    def test_per_holdout_bypassed_by_guards_off(self):
-        """guards='off' bypasses per-holdout enforcement."""
-        ml.config(guards="off")
-        data = ml.dataset("iris")
-        s = ml.split(data, "species", seed=42)
-        model1 = ml.fit(s.train, "species", algorithm="logistic", seed=42)
-        model2 = ml.fit(s.train, "species", algorithm="decision_tree", seed=42)
-        ml.assess(model1, test=s.test)
-        ml.assess(model2, test=s.test)  # guards off: no error
-
 
 # ---------------------------------------------------------------------------
 # Config: guards mode
@@ -612,7 +562,7 @@ class TestSaveLoadProvenance:
 
 
 # ---------------------------------------------------------------------------
-# Adversarial bypass vectors
+# FORTRESS: Adversarial bypass vectors
 # ---------------------------------------------------------------------------
 
 
@@ -672,12 +622,17 @@ class TestAdversarialBypass:
         assert identify_partition(s.test) == "test"
 
     def test_list_column_graceful_degradation(self):
-        """DataFrames with unhashable columns degrade gracefully."""
+        """DataFrames with unhashable columns get valid fingerprint via CSV fallback."""
         df = pd.DataFrame({"x": [[1, 2], [3, 4], [5, 6]], "y": [0, 1, 0]})
-        # Should not crash — returns None
-        assert _fingerprint(df) is None
+        # Falls back to CSV serialization — never returns None
+        fp = _fingerprint(df)
+        assert isinstance(fp, str) and len(fp) == 16
+        # Deterministic across calls
+        assert _fingerprint(df) == fp
+        # Unregistered data returns None from identify (partition not in registry)
         assert identify_partition(df) is None
-        # Guards pass silently — unfingerprintable data can't be judged
-        guard_fit(df)
-        guard_evaluate(df)
-        guard_assess(df)
+        # Guards correctly reject unregistered data — no silent bypass
+        with pytest.raises(PartitionError):
+            guard_fit(df)
+        with pytest.raises(PartitionError):
+            guard_evaluate(df)

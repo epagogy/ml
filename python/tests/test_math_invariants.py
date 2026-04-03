@@ -1,18 +1,19 @@
-"""Mathematical invariant tests
+"""Mathematical invariant tests — Chain 15.
+
 These tests prove algorithmic correctness at the mathematical level.
 If an invariant fails, the implementation is wrong — no tolerance excuses.
 
-Linear / Ridge regression
-Logistic regression
-Elastic Net
-SVM (linear)
-Decision Tree (CART)
-Random Forest
-Extra Trees
-Gradient Boosting / histgradient
-AdaBoost
-Naive Bayes
-KNN
+§15.1  Linear / Ridge regression
+§15.2  Logistic regression
+§15.3  Elastic Net
+§15.4  SVM (linear)
+§15.5  Decision Tree (CART)
+§15.6  Random Forest
+§15.7  Extra Trees
+§15.8  Gradient Boosting / histgradient
+§15.9  AdaBoost
+§15.10 Naive Bayes
+§15.11 KNN
 """
 
 import warnings
@@ -52,10 +53,9 @@ def _fit(data, algorithm, task_hint=None, **kwargs):
                       seed=42, **kwargs), s
 
 
-# ── Linear / Ridge regression ──────────────────────────────────────
+# ── §15.1 Linear / Ridge regression ──────────────────────────────────────
 
 
-@pytest.mark.skip(reason="Rust _LinearModel lacks intercept_ attribute")
 def test_linear_normal_equation_residuals():
     """Ridge first-order optimality: X_aug.T @ residuals ≈ alpha * [0, coef].
 
@@ -123,7 +123,7 @@ def test_linear_ridge_shrinkage_monotone():
         )
 
 
-# ── Logistic regression ─────────────────────────────────────────────
+# ── §15.2 Logistic regression ─────────────────────────────────────────────
 
 
 def test_logistic_proba_simplex():
@@ -191,7 +191,7 @@ def test_logistic_loss_decreases_with_iterations():
     )
 
 
-# ── Elastic Net ─────────────────────────────────────────────────────
+# ── §15.3 Elastic Net ─────────────────────────────────────────────────────
 
 
 def test_elastic_net_lasso_sparsity():
@@ -256,7 +256,7 @@ def test_elastic_net_alpha_shrinkage_monotone():
         )
 
 
-# ── SVM (linear) ────────────────────────────────────────────────────
+# ── §15.4 SVM (linear) ────────────────────────────────────────────────────
 
 
 def test_svm_clf_proba_simplex():
@@ -307,7 +307,7 @@ def test_svm_predict_matches_argmax_proba():
     )
 
 
-# ── Decision Tree (CART) ────────────────────────────────────────────
+# ── §15.5 Decision Tree (CART) ────────────────────────────────────────────
 
 
 def test_cart_importances_sum_to_one():
@@ -351,7 +351,7 @@ def test_cart_perfect_memorization_reg():
     )
 
 
-# ── Random Forest ───────────────────────────────────────────────────
+# ── §15.6 Random Forest ───────────────────────────────────────────────────
 
 
 def test_rf_importances_sum_to_one():
@@ -386,7 +386,7 @@ def test_rf_more_trees_no_degradation():
     )
 
 
-# ── Extra Trees ─────────────────────────────────────────────────────
+# ── §15.7 Extra Trees ─────────────────────────────────────────────────────
 
 
 def test_extra_trees_proba_simplex():
@@ -411,7 +411,7 @@ def test_extra_trees_importances_sum_to_one():
     assert np.all(imp_values >= -1e-9)
 
 
-# ── Gradient Boosting / histgradient ────────────────────────────────
+# ── §15.8 Gradient Boosting / histgradient ────────────────────────────────
 
 
 def test_gbt_training_loss_decreases():
@@ -451,7 +451,7 @@ def test_gbt_importances_sum_to_one():
     assert np.all(imp_values >= -1e-9)
 
 
-# ── AdaBoost ────────────────────────────────────────────────────────
+# ── §15.9 AdaBoost ────────────────────────────────────────────────────────
 
 
 def test_adaboost_proba_simplex():
@@ -493,7 +493,7 @@ def test_adaboost_more_estimators_not_worse():
     )
 
 
-# ── Naive Bayes ────────────────────────────────────────────────────
+# ── §15.10 Naive Bayes ────────────────────────────────────────────────────
 
 
 def test_gnb_proba_simplex():
@@ -526,7 +526,7 @@ def test_gnb_no_nan_with_constant_feature():
     assert not preds.isna().any(), "GNB produced NaN predictions with constant feature"
 
 
-# ── KNN ────────────────────────────────────────────────────────────
+# ── §15.11 KNN ────────────────────────────────────────────────────────────
 
 
 def test_knn_k1_perfect_train_accuracy():

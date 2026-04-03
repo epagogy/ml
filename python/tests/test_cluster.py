@@ -1,4 +1,4 @@
-"""Tests for ml.cluster_features() — correlated feature grouping."""
+"""Tests for ml.cluster_features() — correlated feature grouping. Chain 4.4."""
 
 import numpy as np
 import pandas as pd
@@ -23,7 +23,7 @@ def corr_df():
 
 
 def test_cluster_features_returns_list_of_lists(corr_df):
-    """cluster_features() returns list[list[str]]."""
+    """cluster_features() returns list[list[str]]. Chain 4.4."""
     groups = cluster_features(corr_df)
     assert isinstance(groups, list)
     for g in groups:
@@ -32,7 +32,7 @@ def test_cluster_features_returns_list_of_lists(corr_df):
 
 
 def test_cluster_features_covers_all_columns(corr_df):
-    """All columns appear in exactly one group."""
+    """All columns appear in exactly one group. Chain 4.4."""
     groups = cluster_features(corr_df)
     all_cols = [c for g in groups for c in g]
     assert sorted(all_cols) == sorted(corr_df.columns.tolist())
@@ -41,7 +41,7 @@ def test_cluster_features_covers_all_columns(corr_df):
 
 
 def test_cluster_features_groups_correlated(corr_df):
-    """Highly correlated features (x1, x1_copy) end up in the same group."""
+    """Highly correlated features (x1, x1_copy) end up in the same group. Chain 4.4."""
     groups = cluster_features(corr_df, threshold=0.95)
     found = False
     for g in groups:
@@ -52,7 +52,7 @@ def test_cluster_features_groups_correlated(corr_df):
 
 
 def test_cluster_features_independent_in_separate_groups(corr_df):
-    """Independent features (x2, x3) end up in separate groups from x1."""
+    """Independent features (x2, x3) end up in separate groups from x1. Chain 4.4."""
     groups = cluster_features(corr_df, threshold=0.95)
     # x2 and x3 should not be in the same group as x1/x1_copy
     x1_group = next((g for g in groups if "x1" in g), [])
@@ -61,6 +61,6 @@ def test_cluster_features_independent_in_separate_groups(corr_df):
 
 
 def test_cluster_features_via_ml_namespace(corr_df):
-    """ml.cluster_features() accessible from public API."""
+    """ml.cluster_features() accessible from public API. Chain 4.4."""
     groups = ml.cluster_features(corr_df)
     assert isinstance(groups, list)

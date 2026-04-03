@@ -1,13 +1,11 @@
-"""Version and export tests —"""
+"""Version and export tests — Chain 17."""
 
 import ml
 
 
-def test_version_is_semver():
-    """ml.__version__ is a valid semver string matching pyproject.toml."""
-    parts = ml.__version__.split(".")
-    assert len(parts) == 3, f"Expected semver X.Y.Z, got {ml.__version__}"
-    assert all(p.isdigit() for p in parts), f"Non-numeric version: {ml.__version__}"
+def test_version_is_current():
+    """ml.__version__ matches expected release."""
+    assert ml.__version__ == "1.2.0"
 
 
 def test_all_verbs_in_help():

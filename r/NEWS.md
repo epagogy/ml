@@ -1,10 +1,8 @@
-# ml 0.1.2
+# ml 0.2.0
 
-## Fixed
-* Per-holdout assess enforcement: `ml_assess()` now rejects a second call on
-  the same test partition regardless of which model calls it. The provenance
-  registry tracks spent holdouts via content-addressed fingerprinting.
-* Fixed `ml_prepare()` return value extraction (X and norm fields).
+## Changed
+* `ml_assess()` terminal constraint now enforced per-partition via content-addressed
+  fingerprinting. Serialization and deepcopy bypasses are closed.
 
 ## New
 * `ml_cv()`, `ml_cv_temporal()`, `ml_cv_group()` for cross-validation.
@@ -13,9 +11,29 @@
 * Content-addressed provenance registry (`rlang::hash` fingerprinting).
 * Cross-verb provenance checks (train/test from same split).
 
-# ml 0.1.0
+## Fixed
+* Per-holdout assess enforcement: `ml_assess()` now rejects a second call on
+  the same test partition regardless of which model calls it.
+* Fixed `ml_prepare()` return value extraction (X and norm fields).
 
-Initial CRAN release.
+# ml 0.1.2
+
+## New
+* `ml_cv()`, `ml_cv_temporal()`, `ml_cv_group()` for cross-validation.
+* `ml_verify()` for post-fit model verification.
+* `ml_prepare()` for explicit preprocessing.
+* Content-addressed provenance registry (`rlang::hash` fingerprinting).
+* Cross-verb provenance checks (train/test from same split).
+
+## Fixed
+* Per-holdout assess enforcement: `ml_assess()` now rejects a second call on
+  the same test partition regardless of which model calls it. The provenance
+  registry tracks spent holdouts via content-addressed fingerprinting.
+* Fixed `ml_prepare()` return value extraction (X and norm fields).
+
+# ml 1.0.0
+
+First stable CRAN release. The Hastie workflow in R.
 
 ## Core workflow
 

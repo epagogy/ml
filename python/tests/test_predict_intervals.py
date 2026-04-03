@@ -1,4 +1,4 @@
-"""Tests for predict(intervals=True) —"""
+"""Tests for predict(intervals=True) — Chain 12."""
 
 import warnings
 

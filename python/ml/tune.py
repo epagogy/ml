@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from . import _engines, _normalize
-from ._types import ConfigError, DataError, Model, TuningResult
+from ._types import ConfigError, CVResult, DataError, Model, TuningResult
 from .fit import _compute_metrics
 
 # Smart defaults per algorithm — (low, high) for numeric, list for categorical
@@ -37,6 +37,10 @@ TUNE_DEFAULTS: dict[str, dict] = {
         "subsample": (0.5, 1.0),
         "min_samples_split": (2, 10),
         "min_samples_leaf": (1, 5),
+        "reg_lambda": (0.001, 10.0),            # L2 regularization (log-uniform)
+        "gamma": (0.0, 5.0),                    # min split gain
+        "colsample_bytree": (0.3, 1.0),         # column subsampling per tree
+        "min_child_weight": (1.0, 10.0),         # min hessian per leaf (log-uniform)
     },
     "random_forest": {
         "max_depth": (5, 30),
@@ -136,7 +140,7 @@ TUNE_DEFAULTS: dict[str, dict] = {
 
 
 def tune(
-    data: pd.DataFrame,
+    data: pd.DataFrame | CVResult,
     target: str,
     *,
     model: Model | None = None,
@@ -249,9 +253,18 @@ def tune(
             "Example: seed=42"
         )
 
+    # Accept CVResult — extract data and fold schedule
+    _cv_folds_override = None
+    if isinstance(data, CVResult):
+        _cv_folds_override = data.folds
+        cv_folds = data.k
+        if target is None and data.target is not None:
+            target = data.target
+        data = data._data  # unwrap to DataFrame for the rest of the function
+
     if not isinstance(data, pd.DataFrame):
         raise DataError(
-            f"Expected DataFrame for data, got {type(data).__name__}"
+            f"Expected DataFrame or CVResult for data, got {type(data).__name__}"
         )
 
     # Validate n_trials
@@ -390,13 +403,22 @@ def tune(
     y = data[target]
     rng = np.random.RandomState(seed)
 
-    # Set up CV
-    from .split import _kfold, _stratified_kfold
-
-    if task == "classification":
-        cv_splits = list(_stratified_kfold(y.values, k=cv_folds, seed=seed))
+    # Set up CV — reuse fold schedule from CVResult if provided
+    if _cv_folds_override is not None:
+        # CVResult folds are (DataFrame, DataFrame) — convert to index arrays
+        # relative to the current (possibly NaN-dropped) data
+        data_index = data.index
+        cv_splits = []
+        for train_df, valid_df in _cv_folds_override:
+            train_idx = np.array([data_index.get_loc(i) for i in train_df.index if i in data_index])
+            valid_idx = np.array([data_index.get_loc(i) for i in valid_df.index if i in data_index])
+            cv_splits.append((train_idx, valid_idx))
     else:
-        cv_splits = list(_kfold(len(X), k=cv_folds, seed=seed))
+        from .split import _kfold, _stratified_kfold
+        if task == "classification":
+            cv_splits = list(_stratified_kfold(y.values, k=cv_folds, seed=seed))
+        else:
+            cv_splits = list(_kfold(len(X), k=cv_folds, seed=seed))
 
     # Determine primary metric (aligned with screen/compare defaults)
     if task == "classification":
@@ -604,22 +626,16 @@ def tune(
 
     # Refit on ALL data with best params (suppress duplicate NaN warning)
     from .fit import fit
-    # Separate engine hyperparams that collide with fit() named params.
-    # KNN 'weights' (hyperparameter: "uniform"/"distance") collides with
-    # fit(weights=) (sample weight column name). Pop it and set on the
-    # engine after fit.
-    refit_params = dict(best_trial["params"])
-    _engine_weights_param = refit_params.pop("weights", None)
+    _fit_kwargs = {"data", "target", "algorithm", "seed", "task", "engine",
+                   "weights", "balance", "time_budget"}
+    refit_params = {k: v for k, v in best_trial["params"].items()
+                    if k not in _fit_kwargs}
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message=".*rows contain NaN.*")
         tuned_model = fit(
             data=data, target=target, algorithm=algo, seed=seed,
             task=task, weights=weights, balance=balance, **refit_params
         )
-    # Re-set KNN weights param on the underlying engine (it's a model
-    # hyperparameter, not sample weights). Must refit after set_params.
-    if _engine_weights_param is not None and hasattr(tuned_model._model, "set_params"):
-        tuned_model._model.set_params(weights=_engine_weights_param)
 
     # Build tuning history DataFrame
     history_records = []
@@ -632,14 +648,9 @@ def tune(
         "score", ascending=not higher_is_better
     ).reset_index(drop=True)
 
-    # Strip engine-level 'weights' from best_params_ to prevent collision
-    # when users do ml.fit(..., **tuned.best_params). KNN 'weights' is an
-    # engine hyperparameter ("uniform"/"distance"), not sample weights.
-    clean_best_params = {k: v for k, v in best_trial["params"].items() if k != "weights"}
-
     return TuningResult(
         best_model=tuned_model,
-        best_params_=clean_best_params,
+        best_params_=dict(best_trial["params"]),
         tuning_history_=tuning_history,
         metric_=primary_metric,
     )
@@ -709,7 +720,7 @@ def _sample_params(search_space: dict, rng: np.random.RandomState) -> dict:
 # Bayesian search (Optuna TPE)
 # ---------------------------------------------------------------------------
 
-# Params where log-scale is physically meaningful
+# Params where log-scale is physically meaningful (Puget C1)
 _LOG_SCALE_PARAMS = frozenset({"learning_rate", "reg_alpha", "reg_lambda", "C", "gamma"})
 
 

@@ -2,6 +2,27 @@
 
 All notable changes to `mlw` will be documented in this file.
 
+## [1.2.0] - 2026-03-28
+
+### Changed
+- `assess()` is now fully independent of `evaluate()` — no call relationship. Both call `_compute_metrics` directly for scoring. Paper claim verified.
+- Terminal assess constraint: per-partition content-addressed enforcement. Serialization and `copy.deepcopy` bypasses are closed — partition-level guard fires regardless of model identity.
+- Atomic check-and-mark in provenance registry prevents TOCTOU races between concurrent threads.
+- **Validation metering K** is now per-partition, not per-model. `evaluate(model, s.valid)` meters the valid partition's fingerprint in the provenance registry. `assess()` reads K from the valid partition of the same split and seals it into `Evidence._K`. Three models evaluating on the same `s.valid` → K=3. Train evaluations do not inflate K.
+
+### Added
+- `cv`, `cv_temporal`, `cv_group` exported in `__all__` (were imported but inaccessible via `ml.cv()`)
+- `verify` exported in `__all__` (provenance integrity check)
+- `Evidence` and `audit` exported in `__all__`
+- `Evidence._K`: selection pressure meter — number of `evaluate()` calls on the validation partition before terminal assessment
+
+### Fixed
+- `assess()` on wrong partition (e.g., `s.train`) no longer burns the one-shot counter
+- `_split_receipt` AttributeError in `split.py` (removed non-existent kwarg)
+- `ALGORITHM_ALIASES` missing from `_engines.py` (ImportError on fit)
+- `histgradient` sklearn fallback no longer passes Rust-only kwargs
+- `_fingerprint()` handles non-DataFrame inputs gracefully (returns None instead of crashing)
+
 ## [1.1.2] - 2026-03-14
 
 ### Fixed
@@ -65,5 +86,4 @@ First stable release. The Hastie workflow in code.
 
 ### Languages
 - Python (`mlw` on PyPI)
-- R (`ml` on CRAN)
 - R (`ml` on CRAN)

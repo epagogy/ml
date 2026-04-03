@@ -2,7 +2,7 @@
 % Please edit documentation in R/enough.R
 \name{ml_enough}
 \alias{ml_enough}
-\title{Learning curve analysis -- do you need more data?}
+\title{Learning curve analysis — do you need more data?}
 \usage{
 ml_enough(s, target, seed = NULL, algorithm = "auto", steps = 8L, cv = 3L)
 }
@@ -25,11 +25,11 @@ score at each step. Default 3.}
 \value{
 An \code{ml_enough_result} with fields:
 \itemize{
-\item \verb{$saturated} -- logical, TRUE if curve plateaus (< 1\%\% gain in last half)
-\item \verb{$curve} -- data.frame: n_samples, train_score, val_score
-\item \verb{$metric} -- metric name used
-\item \verb{$n_current} -- total training rows in the full dataset
-\item \verb{$recommendation} -- human-readable action
+\item \verb{$saturated} — logical, TRUE if curve plateaus (< 1\%\% gain in last half)
+\item \verb{$curve} — data.frame: n_samples, train_score, val_score
+\item \verb{$metric} — metric name used
+\item \verb{$n_current} — total training rows in the full dataset
+\item \verb{$recommendation} — human-readable action
 }
 }
 \description{

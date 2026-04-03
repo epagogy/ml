@@ -1,4 +1,5 @@
-"""Performance benchmarks
+"""Performance benchmarks — Chain 13.
+
 These tests use @pytest.mark.slow and are skipped in normal test runs.
 Run with: pytest tests/test_performance.py -v -m slow
 """

@@ -1002,16 +1002,15 @@ class _RustGBTClassifier:
     def __init__(
         self,
         n_estimators: int = 100,
-        learning_rate: float = 0.3,
-        max_depth: int = 6,
+        learning_rate: float = 0.1,
+        max_depth: int = 3,
         min_samples_split: int = 2,
         min_samples_leaf: int = 1,
         subsample: float = 1.0,
         random_state: int | None = None,
-        reg_lambda: float = 1.0,
+        reg_lambda: float = 0.0,
         gamma: float = 0.0,
         colsample_bytree: float = 1.0,
-        colsample_bynode: float = 1.0,
         min_child_weight: float = 1.0,
         n_iter_no_change: int | None = None,
         validation_fraction: float = 0.1,
@@ -1025,9 +1024,6 @@ class _RustGBTClassifier:
         goss_top_rate: float = 1.0,
         goss_other_rate: float = 1.0,
         goss_min_n: int = 50_000,
-        leaf_smooth: float = 0.0,
-        scale_pos_weight: float = 1.0,
-        dart_rate: float = 0.0,
         **_ignored: Any,
     ) -> None:
         if int(n_estimators) < 1:
@@ -1046,7 +1042,6 @@ class _RustGBTClassifier:
         self.reg_lambda = float(reg_lambda)
         self.gamma = float(gamma)
         self.colsample_bytree = float(colsample_bytree)
-        self.colsample_bynode = float(colsample_bynode)
         self.min_child_weight = float(min_child_weight)
         self.n_iter_no_change = int(n_iter_no_change) if n_iter_no_change is not None else None
         self.validation_fraction = float(validation_fraction)
@@ -1060,9 +1055,6 @@ class _RustGBTClassifier:
         self.goss_top_rate = float(goss_top_rate)
         self.goss_other_rate = float(goss_other_rate)
         self.goss_min_n = int(goss_min_n)
-        self.leaf_smooth = float(leaf_smooth)
-        self.scale_pos_weight = float(scale_pos_weight)
-        self.dart_rate = float(dart_rate)
         self.classes_: np.ndarray = np.array([])
         self._model: Any = None
 
@@ -1092,7 +1084,6 @@ class _RustGBTClassifier:
             reg_lambda=self.reg_lambda,
             gamma=self.gamma,
             colsample_bytree=self.colsample_bytree,
-            colsample_bynode=self.colsample_bynode,
             min_child_weight=self.min_child_weight,
             n_iter_no_change=self.n_iter_no_change,
             validation_fraction=self.validation_fraction,
@@ -1106,9 +1097,6 @@ class _RustGBTClassifier:
             goss_top_rate=self.goss_top_rate,
             goss_other_rate=self.goss_other_rate,
             goss_min_n=self.goss_min_n,
-            leaf_smooth=self.leaf_smooth,
-            scale_pos_weight=self.scale_pos_weight,
-            dart_rate=self.dart_rate,
         )
         self._model.fit_clf(X, y_enc, sample_weight=sw)
         return self
@@ -1161,7 +1149,6 @@ class _RustGBTClassifier:
                 "reg_lambda": self.reg_lambda,
                 "gamma": self.gamma,
                 "colsample_bytree": self.colsample_bytree,
-                "colsample_bynode": self.colsample_bynode,
                 "min_child_weight": self.min_child_weight,
                 "n_iter_no_change": self.n_iter_no_change,
                 "validation_fraction": self.validation_fraction,
@@ -1198,16 +1185,15 @@ class _RustGBTRegressor:
     def __init__(
         self,
         n_estimators: int = 100,
-        learning_rate: float = 0.3,
-        max_depth: int = 6,
+        learning_rate: float = 0.1,
+        max_depth: int = 3,
         min_samples_split: int = 2,
         min_samples_leaf: int = 1,
         subsample: float = 1.0,
         random_state: int | None = None,
-        reg_lambda: float = 1.0,
+        reg_lambda: float = 0.0,
         gamma: float = 0.0,
         colsample_bytree: float = 1.0,
-        colsample_bynode: float = 1.0,
         min_child_weight: float = 1.0,
         n_iter_no_change: int | None = None,
         validation_fraction: float = 0.1,
@@ -1221,9 +1207,6 @@ class _RustGBTRegressor:
         goss_top_rate: float = 1.0,
         goss_other_rate: float = 1.0,
         goss_min_n: int = 50_000,
-        leaf_smooth: float = 0.0,
-        scale_pos_weight: float = 1.0,
-        dart_rate: float = 0.0,
         **_ignored: Any,
     ) -> None:
         if int(n_estimators) < 1:
@@ -1242,7 +1225,6 @@ class _RustGBTRegressor:
         self.reg_lambda = float(reg_lambda)
         self.gamma = float(gamma)
         self.colsample_bytree = float(colsample_bytree)
-        self.colsample_bynode = float(colsample_bynode)
         self.min_child_weight = float(min_child_weight)
         self.n_iter_no_change = int(n_iter_no_change) if n_iter_no_change is not None else None
         self.validation_fraction = float(validation_fraction)
@@ -1256,9 +1238,6 @@ class _RustGBTRegressor:
         self.goss_top_rate = float(goss_top_rate)
         self.goss_other_rate = float(goss_other_rate)
         self.goss_min_n = int(goss_min_n)
-        self.leaf_smooth = float(leaf_smooth)
-        self.scale_pos_weight = float(scale_pos_weight)
-        self.dart_rate = float(dart_rate)
         self._model: Any = None
 
     def fit(
@@ -1283,7 +1262,6 @@ class _RustGBTRegressor:
             reg_lambda=self.reg_lambda,
             gamma=self.gamma,
             colsample_bytree=self.colsample_bytree,
-            colsample_bynode=self.colsample_bynode,
             min_child_weight=self.min_child_weight,
             n_iter_no_change=self.n_iter_no_change,
             validation_fraction=self.validation_fraction,
@@ -1297,9 +1275,6 @@ class _RustGBTRegressor:
             goss_top_rate=self.goss_top_rate,
             goss_other_rate=self.goss_other_rate,
             goss_min_n=self.goss_min_n,
-            leaf_smooth=self.leaf_smooth,
-            scale_pos_weight=self.scale_pos_weight,
-            dart_rate=self.dart_rate,
         )
         self._model.fit_reg(X, y, sample_weight=sw)
         return self
@@ -1344,7 +1319,6 @@ class _RustGBTRegressor:
                 "reg_lambda": self.reg_lambda,
                 "gamma": self.gamma,
                 "colsample_bytree": self.colsample_bytree,
-                "colsample_bynode": self.colsample_bynode,
                 "min_child_weight": self.min_child_weight,
                 "n_iter_no_change": self.n_iter_no_change,
                 "validation_fraction": self.validation_fraction,

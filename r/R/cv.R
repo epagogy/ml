@@ -96,6 +96,7 @@ ml_cv <- function(s, target, folds = 5L, seed = NULL, stratify = TRUE) {
 #' @param folds Number of folds (default 5)
 #' @returns An `ml_cv_result` with expanding-window folds
 #' @export
+#' @examples
 #' @param embargo Integer. Number of rows to skip between train end and valid
 #'   start (gap to prevent temporal leakage from autocorrelation). Default 0.
 #'   Must be >= 0.

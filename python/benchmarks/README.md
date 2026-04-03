@@ -7,7 +7,7 @@ Measures wall time, peak memory, and throughput for each `ml` function across da
 ```bash
 python benchmarks/bench_functions.py              # tiny + small (Mac)
 python benchmarks/bench_functions.py --medium      # + 100K rows
-python benchmarks/bench_functions.py --large        # + 1M rows (server only)
+python benchmarks/bench_functions.py --large       # + 1M rows (server only)
 python benchmarks/bench_functions.py --json --output results.json
 ```
 

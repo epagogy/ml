@@ -1,54 +1,68 @@
-# Contributing
+# Contributing to ml
+
+Thanks for your interest. ml is a tabular ML library — clean API, reproducible by default.
 
 ## Quick start
 
 ```bash
 git clone https://github.com/epagogy/ml
-cd python
+cd ml/ml/python
 pip install -e ".[dev,xgboost]"
 pytest tests/ -x -v
 ```
 
-Python and R contributions are independent. No cross-language setup required.
+**Python and R contributions are independent.** If you're working on Python, you only need to run Python tests. Same for R. No cross-language setup required.
 
 ## What we accept
 
-- **Bug fixes.** Include a test that reproduces the bug.
-- **Documentation.** Typos, clarifications, better examples.
-- **New tests.** Especially edge cases.
-- **Performance.** With before/after benchmarks.
+- **Bug fixes** — always welcome. Include a test that reproduces the bug.
+- **Documentation improvements** — typos, clarifications, better examples.
+- **New tests** — especially for edge cases.
+- **Performance improvements** — with before/after benchmarks.
 
 ## What requires discussion first
 
-API changes (new verbs, changed signatures, new algorithms) require an [issue](https://github.com/epagogy/ml/issues) before a PR. The API is intentionally narrow.
+**API changes** (new verbs, changed signatures, new algorithms) require an issue before a PR. Open an issue, describe the problem you're solving, and wait for maintainer feedback. This keeps the API intentionally narrow.
 
 ## Scope
 
-ml does tabular supervised ML. It does not do deep learning, time series, image/audio, distributed training, or experiment tracking.
+ml does tabular supervised ML. It does not do:
+- Deep learning
+- Time series forecasting
+- Image or audio classification
+- Distributed training
+- Experiment tracking
 
-## PR checklist
+If you want to add these, open an issue to discuss. Possible answer: out of scope, but we'll point you to alternatives.
 
-- [ ] `ruff check ml/ tests/` passes
-- [ ] `pytest tests/ -x` passes
+## Pull request checklist
+
+- [ ] `ruff check ml/ tests/` passes (0 errors)
+- [ ] `pytest tests/ -x` passes (all green)
 - [ ] Tests added for new behavior
 - [ ] Docstring updated if signature changed
 - [ ] CHANGELOG.md entry added
 
-## Tests
+## Running tests
 
 ```bash
-pytest tests/ -x -v               # fast
-pytest tests/ -x -v -m slow       # include slow tests
-pytest tests/test_fit.py -v       # single file
+# Fast (default — no slow/network tests)
+pytest tests/ -x -v
+
+# Include slow tests
+pytest tests/ -x -v -m slow
+
+# Single file
+pytest tests/test_fit.py -v
 ```
 
-## Style
+## Code style
 
-- `ruff` (config in pyproject.toml)
+- `ruff` for linting (config in pyproject.toml)
 - 100-char line limit
 - Google-style docstrings
-- Named keyword arguments in tests
+- Named keyword arguments in tests (never positional for ml.fit(), ml.split(), etc.)
 
 ## Questions
 
-[GitHub Discussions](https://github.com/epagogy/ml/discussions), not issues.
+Open a [GitHub Discussion](https://github.com/epagogy/ml/discussions) — not an issue. Issues are for bugs and confirmed feature requests.

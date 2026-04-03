@@ -1,9 +1,10 @@
-"""Real-world dataset sweep
+"""Real-world dataset sweep — Chain 20.
+
 Floor-check: core algorithms must exceed minimum metrics on bundled real-world datasets.
 Not golden pins — just "algorithm doesn't completely fail on real data."
 
-Dataset loading smoke tests
-Core algorithm floor checks (clf: accuracy; reg: r2)
+§20.1  Dataset loading smoke tests
+§20.2  Core algorithm floor checks (clf: accuracy; reg: r2)
 """
 
 import warnings
@@ -38,7 +39,7 @@ for ds, tgt, task, metric, floor, algos in _REAL_WORLD_SUITE:
         _CASE_IDS.append(f"{ds}/{algo}")
 
 
-# ── Dataset loading smoke tests ────────────────────────────────────────
+# ── §20.1  Dataset loading smoke tests ────────────────────────────────────────
 
 @pytest.mark.parametrize("name", ["iris", "wine", "cancer", "diabetes", "churn", "titanic"])
 def test_dataset_loads(name):
@@ -48,7 +49,7 @@ def test_dataset_loads(name):
     assert len(df.columns) >= 2, f"{name}: too few columns"
 
 
-# ── Floor checks ────────────────────────────────────────────────────────
+# ── §20.2  Floor checks ────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("dataset,target,task,metric,floor,algorithm", _CASES, ids=_CASE_IDS)
 def test_real_world_floor(dataset, target, task, metric, floor, algorithm):
@@ -81,7 +82,7 @@ def test_real_world_floor(dataset, target, task, metric, floor, algorithm):
     )
 
 
-# ── Profile smoke test ──────────────────────────────────────────────────
+# ── §20.3  Profile smoke test ──────────────────────────────────────────────────
 
 @pytest.mark.parametrize("name,target", [
     ("iris",   "species"),
@@ -97,7 +98,7 @@ def test_profile_runs_on_real_data(name, target):
     assert len(prof) > 0, "profile() returned empty dict"
 
 
-# ── Screen smoke test ───────────────────────────────────────────────────
+# ── §20.4  Screen smoke test ───────────────────────────────────────────────────
 
 def test_screen_runs_on_real_data():
     """ml.screen() completes and returns a leaderboard on iris."""
@@ -109,7 +110,7 @@ def test_screen_runs_on_real_data():
     assert len(lb) > 0, "screen() returned empty leaderboard"
 
 
-# ── Assess smoke test ───────────────────────────────────────────────────
+# ── §20.5  Assess smoke test ───────────────────────────────────────────────────
 
 def test_assess_runs_on_real_data():
     """ml.assess() completes on cancer dataset (single holdout, no repeated testing)."""

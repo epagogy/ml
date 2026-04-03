@@ -27,7 +27,7 @@ def cluster_features(
     Features with absolute Pearson |r| >= threshold end up in the same cluster.
     Pass the result to ``ml.explain(feature_groups=groups)`` for grouped
     permutation importance — permuting correlated features together avoids the
-    underestimation bias of individual feature permutation.
+    underestimation bias of individual feature permutation (Puget C5).
 
     Parameters
     ----------

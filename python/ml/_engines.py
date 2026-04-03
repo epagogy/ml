@@ -27,6 +27,22 @@ def clone(estimator):
     return type(estimator)(**params)
 
 
+# Short aliases for algorithm names (user convenience).
+ALGORITHM_ALIASES: dict[str, str] = {
+    "rf": "random_forest",
+    "lr": "logistic",
+    "dt": "decision_tree",
+    "et": "extra_trees",
+    "xgb": "xgboost",
+    "lgb": "lightgbm",
+    "cb": "catboost",
+    "nb": "naive_bayes",
+    "en": "elastic_net",
+    "gb": "gradient_boosting",
+    "hgb": "histgradient",
+    "ab": "adaboost",
+}
+
 # Algorithms that support parallel fitting via n_jobs parameter.
 # Used by screen() and tune() to enable n_jobs=-1 (all cores) by default.
 # fit() keeps n_jobs=1 (deterministic single-thread default).
@@ -85,6 +101,8 @@ def _detect_gpu() -> bool:
         _GPU_CACHE = bool(torch.cuda.is_available())
         return _GPU_CACHE
     except (ImportError, AttributeError):
+        # ImportError: torch not installed
+        # AttributeError: CPU-stub install without cuda attribute
         pass
 
     # Fallback: check nvidia-smi (works even without torch)
@@ -104,26 +122,6 @@ def _detect_gpu() -> bool:
 
 
 _VALID_ENGINES = ("auto", "ml", "sklearn", "native")
-
-ALGORITHM_ALIASES = {
-    "xgb": "xgboost",
-    "rf": "random_forest",
-    "lr": "logistic",
-    "lm": "linear",
-    "nb": "naive_bayes",
-    "forest": "random_forest",
-    "boost": "xgboost",
-    "lasso": "elastic_net",
-    "ridge": "linear",
-    "dt": "decision_tree",
-    "et": "extra_trees",
-    "gb": "gradient_boosting",
-    "hgb": "histgradient",
-    "lgb": "lightgbm",
-    "cb": "catboost",
-    "ada": "adaboost",
-    "en": "elastic_net",
-}
 
 
 def create(
@@ -657,9 +655,6 @@ def _create_lightgbm(task: str, seed: int, *, engine: str = "auto", **kwargs) ->
                     colsample_bytree=kwargs.get(
                         "colsample_bytree", kwargs.get("feature_fraction", 1.0)
                     ),
-                    colsample_bynode=kwargs.get(
-                        "colsample_bynode", kwargs.get("feature_fraction_bynode", 1.0)
-                    ),
                     goss_top_rate=kwargs.get("top_rate", 0.2),
                     goss_other_rate=kwargs.get("other_rate", 0.1),
                     goss_min_n=kwargs.get("goss_min_n", 50_000),
@@ -853,8 +848,8 @@ def _create_histgradient(task: str, seed: int, *, engine: str = "auto", **kwargs
     If your data contains NaN, use engine='sklearn' or impute first.
     """
     n_estimators = int(kwargs.get("n_estimators", 100))
-    learning_rate = float(kwargs.get("learning_rate", 0.3))
-    max_depth = int(kwargs.get("max_depth", 6))
+    learning_rate = float(kwargs.get("learning_rate", 0.1))
+    max_depth = int(kwargs.get("max_depth", 3))
     min_samples_split = int(kwargs.get("min_samples_split", 2))
     min_samples_leaf = int(kwargs.get("min_samples_leaf", 1))
     subsample = float(kwargs.get("subsample", 1.0))
@@ -863,16 +858,12 @@ def _create_histgradient(task: str, seed: int, *, engine: str = "auto", **kwargs
         from ._rust import HAS_RUST_GBT, _RustGBTClassifier, _RustGBTRegressor
         if HAS_RUST_GBT:
             _gbt_extra = dict(
-                reg_lambda=kwargs.get("reg_lambda", kwargs.get("lambda", 1.0)),
+                reg_lambda=kwargs.get("reg_lambda", kwargs.get("lambda", 0.0)),
                 gamma=kwargs.get("gamma", 0.0),
                 colsample_bytree=kwargs.get("colsample_bytree", 1.0),
-                colsample_bynode=kwargs.get("colsample_bynode", 1.0),
                 min_child_weight=kwargs.get("min_child_weight", 1.0),
                 n_iter_no_change=kwargs.get("n_iter_no_change"),
                 validation_fraction=kwargs.get("validation_fraction", 0.1),
-                leaf_smooth=kwargs.get("leaf_smooth", 0.0),
-                scale_pos_weight=kwargs.get("scale_pos_weight", 1.0),
-                dart_rate=kwargs.get("dart_rate", 0.0),
             )
             if task == "classification":
                 return _RustGBTClassifier(
@@ -907,14 +898,10 @@ def _create_histgradient(task: str, seed: int, *, engine: str = "auto", **kwargs
         HistGradientBoostingClassifier,
         HistGradientBoostingRegressor,
     )
-    # Filter out Rust/XGBoost-specific kwargs that sklearn doesn't accept
-    _rust_only = {"reg_lambda", "gamma", "colsample_bytree", "colsample_bynode", "min_child_weight", "scale_pos_weight",
-                  "n_iter_no_change", "validation_fraction", "lambda"}
-    sk_kwargs = {k: v for k, v in kwargs.items() if k not in _rust_only}
     if task == "classification":
-        return HistGradientBoostingClassifier(random_state=seed, **sk_kwargs)
+        return HistGradientBoostingClassifier(random_state=seed, **kwargs)
     else:
-        return HistGradientBoostingRegressor(random_state=seed, **sk_kwargs)
+        return HistGradientBoostingRegressor(random_state=seed, **kwargs)
 
 
 def _create_decision_tree(task: str, seed: int, *, engine: str = "auto", **kwargs) -> Any:
@@ -1062,7 +1049,7 @@ def _create_gradient_boosting(task: str, seed: int, *, engine: str = "auto", **k
                     "reg_lambda", "lambda", "gamma", "colsample_bytree",
                     "min_child_weight", "n_iter_no_change", "validation_fraction",
                     "reg_alpha", "max_delta_step", "base_score", "monotone_cst", "max_bin",
-                    "grow_policy", "max_leaves", "leaf_smooth", "dart_rate",
+                    "grow_policy", "max_leaves",
                 }
                 filtered = {k: v for k, v in kwargs.items() if k in _rust_params}
                 # Normalize "lambda" → "reg_lambda" for Python keyword safety

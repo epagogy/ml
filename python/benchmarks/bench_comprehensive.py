@@ -6,7 +6,7 @@ Usage:
 Benchmarks fit + predict speed, accuracy, and memory for all algorithms
 on 6 datasets of varying size and shape.
 
-Comprehensive benchmark suite.
+Wave 4D — best-in-class push.
 """
 
 from __future__ import annotations

@@ -1,18 +1,19 @@
-"""Adversarial input battery
+"""Adversarial input battery — Chain 17.
+
 Each test: algorithm either handles the input correctly or raises a CLEAN error.
 Never crash with segfault, never silently return NaN/garbage.
 
-Constant target (clf + reg)
-Single feature
-All-zero features
-NaN passthrough (algorithms that handle NaN)
-NaN clean error (algorithms that don't handle NaN)
-p >> n (wide data)
-Duplicate rows
-Near-constant features
-Single row predict
-High-cardinality categorical feature
-Column mismatch at predict time
+§17.1  Constant target (clf + reg)
+§17.2  Single feature
+§17.3  All-zero features
+§17.4  NaN passthrough (algorithms that handle NaN)
+§17.5  NaN clean error (algorithms that don't handle NaN)
+§17.6  p >> n (wide data)
+§17.7  Duplicate rows
+§17.8  Near-constant features
+§17.9  Single row predict
+§17.10 High-cardinality categorical feature
+§17.11 Column mismatch at predict time
 """
 
 import warnings
@@ -77,7 +78,7 @@ def _reg_data(n=100, p=8):
     return df
 
 
-# ── Constant target ─────────────────────────────────────────────────────
+# ── §17.1  Constant target ─────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _ALL_CLF)
 def test_constant_target_clf(algorithm):
@@ -109,7 +110,7 @@ def test_constant_target_reg(algorithm):
             ml.fit(data=s.train, target="target", algorithm=algorithm, seed=42)
 
 
-# ── Single feature ──────────────────────────────────────────────────────
+# ── §17.2  Single feature ──────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _ALL_CLF)
 def test_single_feature_clf(algorithm):
@@ -150,7 +151,7 @@ def test_single_feature_reg(algorithm):
         assert np.isfinite(preds.values).all(), f"{algorithm}: non-finite predictions on single-feature data"
 
 
-# ── All-zero features ───────────────────────────────────────────────────
+# ── §17.3  All-zero features ───────────────────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _ALL_CLF)
 def test_all_zero_features_clf(algorithm):
@@ -190,7 +191,7 @@ def test_all_zero_features_reg(algorithm):
             pass  # Clean error acceptable
 
 
-# ── NaN: no silent corruption ──────────────────────────────────────────
+# ── §17.5  NaN: no silent corruption ──────────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _NO_NAN_ALGOS)
 def test_nan_no_silent_corruption(algorithm):
@@ -217,7 +218,7 @@ def test_nan_no_silent_corruption(algorithm):
             pass  # Raising a clean error is the preferred behavior
 
 
-# ── p >> n (wide data) ─────────────────────────────────────────────────
+# ── §17.6  p >> n (wide data) ─────────────────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _ALL_CLF)
 def test_wide_data_clf(algorithm):
@@ -239,7 +240,7 @@ def test_wide_data_clf(algorithm):
             pass  # Clean error acceptable
 
 
-# ── Duplicate rows ──────────────────────────────────────────────────────
+# ── §17.7  Duplicate rows ──────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _ALL_CLF)
 def test_duplicate_rows_clf(algorithm):
@@ -262,7 +263,7 @@ def test_duplicate_rows_clf(algorithm):
             pass  # Clean error acceptable (e.g., zero variance in all features)
 
 
-# ── Near-constant features ─────────────────────────────────────────────
+# ── §17.8  Near-constant features ─────────────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _ALL_CLF)
 def test_near_constant_features_clf(algorithm):
@@ -284,7 +285,7 @@ def test_near_constant_features_clf(algorithm):
             pass  # Clean error acceptable
 
 
-# ── Single-row predict ──────────────────────────────────────────────────
+# ── §17.9  Single-row predict ──────────────────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _ALL_CLF)
 def test_single_row_predict_clf(algorithm):
@@ -303,7 +304,7 @@ def test_single_row_predict_clf(algorithm):
             pass  # Algorithms with min_samples constraints may fail — that's fine
 
 
-# ── High-cardinality categorical ──────────────────────────────────────
+# ── §17.10  High-cardinality categorical ──────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _ALL_CLF)
 def test_high_cardinality_categorical_clf(algorithm):
@@ -327,7 +328,7 @@ def test_high_cardinality_categorical_clf(algorithm):
             pass  # Clean error acceptable
 
 
-# ── Column mismatch at predict time ───────────────────────────────────
+# ── §17.11  Column mismatch at predict time ───────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _ALL_CLF)
 def test_predict_missing_column(algorithm):

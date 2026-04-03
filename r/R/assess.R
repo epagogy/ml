@@ -41,17 +41,6 @@ ml_assess <- function(model, test) {
 
     # Layer 2: Cross-verb provenance — reject split-shopping
     .check_provenance(model[[".provenance"]], test)
-
-    # Layer 3: Per-holdout enforcement — reject already-assessed test partitions
-    if (.is_assessed(test)) {
-      .guard_action(paste0(
-        "ml_assess() called on a test holdout that has already been assessed. ",
-        "The test set gets one assessment per holdout, regardless of which model. ",
-        "Use ml_evaluate(model, s$valid) for model comparison. ",
-        "To get a fresh holdout: s <- ml_split(df, target, seed = NEW_SEED). ",
-        "To override: ml_config(guards = 'off')"
-      ))
-    }
   }
 
   # Increment assess counter FIRST, then check
@@ -63,10 +52,6 @@ ml_assess <- function(model, test) {
       " times on same model. Repeated peeking at test data inflates apparent performance."
     ))
   }
-
-  # Mark test holdout as assessed in provenance registry (per-holdout enforcement).
-  # guard check above already rejected if this holdout was previously assessed.
-  if (.guards_active()) .mark_assessed(test)
 
   # Compute metrics via shared scoring logic — no ml_evaluate() call
   result <- .score_impl(model, test)

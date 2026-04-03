@@ -4,12 +4,10 @@
 \alias{ml_dataset}
 \title{Load a built-in dataset}
 \usage{
-ml_dataset(name, seed = 42L)
+ml_dataset(name)
 }
 \arguments{
 \item{name}{Dataset name (string)}
-
-\item{seed}{Random seed for synthetic datasets (default 42)}
 }
 \value{
 A data.frame

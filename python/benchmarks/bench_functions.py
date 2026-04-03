@@ -6,7 +6,7 @@ across 4 dataset sizes. Outputs JSON for regression tracking.
 Usage:
     python benchmarks/bench_functions.py              # tiny + small (Mac default)
     python benchmarks/bench_functions.py --medium      # + medium
-    python benchmarks/bench_functions.py --server       # + large (server only)
+    python benchmarks/bench_functions.py --large       # + large (server only)
     python benchmarks/bench_functions.py --json        # JSON output only
 """
 
@@ -310,15 +310,15 @@ def run_benchmarks(sizes: list[str], json_only: bool = False) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="ml per-function benchmarks")
     parser.add_argument("--medium", action="store_true", help="Include medium (100K rows)")
-    parser.add_argument("--server", action="store_true", help="Include large (1M rows, server only)")
+    parser.add_argument("--large", action="store_true", help="Include large (1M rows, server only)")
     parser.add_argument("--json", action="store_true", help="JSON output only")
     parser.add_argument("--output", type=str, help="Save results to JSON file")
     args = parser.parse_args()
 
     sizes = ["tiny", "small"]
-    if args.medium or args.server:
+    if args.medium or args.large:
         sizes.append("medium")
-    if args.server:
+    if args.large:
         sizes.append("large")
 
     results = run_benchmarks(sizes, json_only=args.json)
