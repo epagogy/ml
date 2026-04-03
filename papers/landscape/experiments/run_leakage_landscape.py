@@ -1,9 +1,9 @@
 """The Leakage Landscape — Full Experimental Suite V4.
 
 Maps where ML workflow errors matter across 2000+ classification datasets.
-Design document: LEAKAGE_LANDSCAPE_DESIGN.md
+See paper for experimental design.
 
-21 experiments (post-auditor-council revision, kills S+U as redundant Class I):
+21 experiments (S+U removed as redundant Class I):
   A:  Normalization leakage — StandardScaler (global vs per-fold, 4 algos)
   A2: Normalization leakage — MinMaxScaler (global vs per-fold, 4 algos)
   A3: Normalization under outliers (inject 10% outliers into test, both scalers)

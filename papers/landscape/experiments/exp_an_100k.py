@@ -21,7 +21,7 @@ DESIGN:
   Uses the SAME code as run_v3_experiments.py exp_an() for exact
   methodological consistency. No new experiment code — just a wrapper.
 
-SELF-AUDIT:
+NOTE:
   [x] Reimplements exp_an() methodology (same configs, same random-pick honest baseline)
   [x] Only runs on datasets with n≥100K (97 available)
   [x] n_jobs=1 on models, parallelism across datasets

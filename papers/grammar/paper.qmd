@@ -8,7 +8,7 @@ author:
     affiliations:
       - name: Independent researcher
 keywords: [machine learning, data leakage, grammar, type system, cross-validation, reproducibility]
-date: "2026-04-02"
+date: "2026-04-03"
 date-format: "MMMM D, YYYY"
 format:
   pdf:
@@ -24,7 +24,7 @@ link-citations: true
 abstract: |
   Data leakage has been identified in 648 published papers (as of mid-2024) across 30 scientific fields [@kapoor2025living]. The knowledge to prevent it has existed for over a decade; the problem persists because the tools do not enforce what the textbooks teach. No existing ML framework distinguishes formative evaluation (iterative model development) from summative assessment (terminal performance judgment) as a type-level distinction, and none rejects the violation at call time.
 
-  This paper presents a grammar — eight typed primitives connected by a directed acyclic graph with four hard constraints — that makes the most damaging leakage types structurally unrepresentable. The core mechanism is a terminal assessment gate: the first call-time-enforced evaluate/assess boundary in an ML framework (as of April 2026), backed by a specification precise enough for independent reimplementation. Boundary-aware splitting addresses the structural layer; the type system catches implementation errors — from human practitioners, LLM code generators, and AutoML systems alike — that would otherwise pass silently through any correct-looking workflow. A companion study across 2,047 datasets [@roth2026landscape] grounds the constraints in measured effect sizes. Three directional predictions recorded before observing results: two confirmed, one falsified. Two reference implementations (Python, R) are available.
+  This paper presents a grammar (eight typed primitives connected by a directed acyclic graph with four hard constraints) that makes the most damaging leakage types structurally unrepresentable. The core mechanism is a terminal assessment gate: the first call-time-enforced evaluate/assess boundary in an ML framework (as of April 2026), backed by a specification precise enough for independent reimplementation. Boundary-aware splitting addresses the structural layer; the type system catches implementation errors — from human practitioners, LLM code generators, and AutoML systems alike — that would otherwise pass silently through any correct-looking workflow. A companion study across 2,047 datasets [@roth2026landscape] grounds the constraints in measured effect sizes. Three directional predictions recorded before observing results: two confirmed, one falsified. Two reference implementations (Python, R) are available.
 ---
 
 ```{python}
@@ -40,17 +40,17 @@ Six hundred forty-eight published papers contain data leakage errors across 30 s
 
 Documentation does not close structural failures. Best-practice guides did not prevent an estimated 17.5% of neuroimaging studies from leaking [@rosenblatt2024data].<!-- 17.5% = 10/57 studies, Rosenblatt 2024 citing prior review --> Checklists did not prevent leaked results from propagating into field-level meta-analytic conclusions [@vandemortel2025leakage]. The bias literature arrived at the same diagnosis from a different direction: pipeline stages that should be isolated are not [@roth2022biased]. Leakage and bias share a root cause — and neither yields to appeals for caution. This paper addresses leakage specifically; fairness bias is a distinct problem addressed elsewhere [@roth2022biased].
 
-The field responded with documentation — best-practice guides, checklists [@kapoor2024reforms], linting tools. @yang2022leakage's LeakageDetector catches three leakage types at 93% accuracy. @drobnjakovic2024abstract's abstract interpretation tracks partition labels through notebook code at 93% precision — the closest existing work to a formal treatment of pipeline correctness. Both detect leakage. Neither prevents it. Detection finds the error after the fact; prevention makes it inexpressible. The question the literature has not answered is whether leakage can be made structurally inexpressible — rejected by the composition rules of the workflow itself, not flagged afterward by a separate tool.
+The field responded with documentation: best-practice guides, checklists [@kapoor2024reforms], linting tools. @yang2022leakage's LeakageDetector catches three leakage types at 93% accuracy. @drobnjakovic2024abstract's abstract interpretation tracks partition labels through notebook code at 93% precision — the closest existing work to a formal treatment of pipeline correctness. Both detect leakage. Neither prevents it. Detection finds the error after the fact; prevention makes it inexpressible. The question the literature has not answered is whether leakage can be made structurally inexpressible — rejected by the composition rules of the workflow itself, not flagged afterward by a separate tool.
 
 **The code generation gap.** Large language models now generate ML pipelines faster than any human can review them. Ask one to build a classifier and it will evaluate on the test set, because that is what most training examples do. The leaky path is the short path, and the short path is what language models learn. Preliminary results from a companion study in preparation [@roth2026shortpath] suggest that the default code path LLMs produce is the leaky one, and asking nicely does not fix it. When pipelines are generated at machine speed, the structural guarantee is the only guarantee that remains.
 
 Structural rejection has worked before. @codd1970relational enumerated eight relational operators and a rejection criterion: queries that violate the relational model are invalid, not merely inadvisable. SQL implemented this. @wickham2010layered did the same for statistical graphics: ggplot2 exposes a curated subset of @wilkinson1999grammar's primitives, and incomplete specifications fail at construction. Both grammars survived because they had executable implementations. The primitives of the supervised ML lifecycle are already standardized (sklearn established fit/predict/transform; tidymodels added per-fold preprocessing). What is missing is the Wickham move: a curated selection with a rejection criterion that makes "this workflow is structurally invalid" a type error rather than an opinion. When pipelines are generated at machine speed — by AutoML systems, LLM code generators, and automated retraining schedules — structural enforcement is the only guarantee that scales regardless of who or what writes the code.
 
-**The Wickham gap.** @wickham2010layered's contribution was not the API; it was the selection. ggplot2 is not a complete implementation of Wilkinson's full system; it exposes a curated subset of it. By choosing which primitives to make primary and which to omit, Wickham shifted which errors were easy to make: incomplete specifications fail at construction, and correct compositions become the default path. The analogous selection has not been made for the ML lifecycle. @kuhn2022tidy came closest: recipes inside tidymodels workflows enforce per-fold preprocessing structurally, and `last_fit()` encourages a one-shot terminal evaluation. That framework got most of the way there. But a user can still fit a recipe outside a workflow, evaluate on training data, or reuse the test set. The structure discourages mistakes but does not eliminate them. There is no type that distinguishes "this data has been split correctly" from "this data has not." The primitives are typed at the implementation level (recipe, parsnip model, workflow), not at the correctness level (Partition, PreparedData, Model).
+**The Wickham gap.** @wickham2010layered's contribution was not the API; it was the selection. ggplot2 is not a complete implementation of Wilkinson's full system; it exposes a curated subset of it. By choosing which primitives to make primary and which to omit, Wickham shifted which errors were easy to make: incomplete specifications fail at construction, and correct compositions become the default path. The analogous selection has not been made for the ML lifecycle. @kuhn2022tidy came closest: recipes inside tidymodels workflows enforce per-fold preprocessing structurally, and `last_fit()` encourages a one-shot terminal evaluation. The tidymodels framework got most of the way there. But a user can still fit a recipe outside a workflow, evaluate on training data, or reuse the test set. The structure discourages mistakes but does not eliminate them. There is no type that distinguishes "this data has been split correctly" from "this data has not." The primitives are typed at the implementation level (recipe, parsnip model, workflow), not at the correctness level (Partition, PreparedData, Model).
 
-This paper makes that selection for supervised learning, addressing the question with a *grammar* in the Wilkinson–Wickham sense: a compositional system with typed primitives and a rejection criterion for a domain, not a generative rule system in Chomsky's sense (the distinction is elaborated in @sec-design-properties). The underlying mechanism is analogous to information flow control [@myers1999jflow]: train, valid, and test function as security levels, and the guards enforce that test-labeled data cannot flow into training operations at primitive boundaries (@sec-design-properties). Specifically, it addresses tabular supervised learning (binary classification, multiclass classification, and regression) on the four leakage classes identified in the companion study [@roth2026landscape]. Temporal leakage is addressed by boundary-aware primitives (`split_temporal`, `cv_temporal`); target-based feature engineering before `split` is rejected by the provenance gate at `fit`; distribution mismatch across groups is addressed by `split_group`. What the grammar cannot see is contamination baked into the raw data before any primitive touches it — a feature that encodes the target under a different name, or a generating process that shifted between collection and deployment.
+This paper makes that selection for supervised learning, addressing the question with a *grammar* in the Wilkinson–Wickham sense: a compositional system with typed primitives and a rejection criterion for a domain, not a generative rule system in Chomsky's sense (the distinction is elaborated in @sec-design-properties). The underlying mechanism is analogous to information flow control [@myers1999jflow]: train, valid, and test function as security levels, and the guards enforce that test-labeled data cannot flow into training operations at primitive boundaries (@sec-design-properties). Specifically, it addresses tabular supervised learning on the four leakage classes identified in the companion study [@roth2026landscape]. Temporal leakage is addressed by boundary-aware primitives (`split_temporal`, `cv_temporal`); feature engineering is scoped per fold by `prepare` after `split`, and `fit` rejects unregistered data that bypassed `split` entirely; distribution mismatch across groups is addressed by `split_group`. What the grammar cannot see is contamination baked into the raw data before any primitive touches it — a feature that encodes the target under a different name, or a generating process that shifted between collection and deployment.
 
-The specification (Appendix A) is the paper's core artifact. It defines the type system, primitive operations, guards, and validity conditions precisely enough for independent reimplementation — semi-formal in the sense that it uses structured English tables rather than inference rules, but complete enough that conformance is testable from the API surface. Read the Appendix as the specification; read the rest as the argument for why it should exist.
+The specification (Appendix A) is the paper's core artifact. It defines the type system, primitive operations, guards, and validity conditions precisely enough for independent reimplementation. The conformance conditions are stated in both structured English and predicate notation; what it lacks is inference rules and a soundness proof, but it is complete enough that conformance is testable from the API surface. Read the Appendix as the specification; read the rest as the argument for why it should exist.
 
 
 ## A Motivating Example
@@ -68,7 +68,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y)
 for Model in [LogisticRegression, RandomForestClassifier]:
     model = Model().fit(X_train, y_train)
     p = model.predict_proba(X_test)[:, 1]
-    print(f"{Model.__name__} Test AUC: {roc_auc_score(y_test, p):.3f}")
+    print(f"{Model.__name__}: {roc_auc_score(y_test, p):.3f}")
 ```
 
 Each model's test-set score is computed and compared. The researcher picks the model with the higher test AUC and reports it. This is methodologically incorrect: the test set has been used for model selection, not just final assessment. The measured inflation is small at $K = 2$ but grows logarithmically with $K$: at $K = 10$ the effect is $d_z$ = `{python} c("peek.dz")`, at $K = 19$ it is $d_z$ = 0.94 [@roth2026landscape].<!-- 0.94 = peek_k19.dz (0.943) rounded to 2dp, from landscape claims.json --> No sklearn [@pedregosa2011scikit] mechanism prevents this: `train_test_split` returns ordinary arrays; nothing stops the user from scoring on `X_test` repeatedly and choosing the best result. The textbook rule ("use the test set only once") is documentation, not enforcement.
@@ -80,21 +80,21 @@ import ml
 
 s = ml.split(df, target="y", seed=42)
 
-for algo in ["logistic", "random_forest"]:
+for algo in ["logistic", "rf"]:
     model = ml.fit(s.train, "y", algorithm=algo, seed=42)
     metrics = ml.evaluate(model, s.valid)
     print(f"{algo}: {metrics['roc_auc']:.3f}")
 
 # pick winner, fit on full dev, assess once
-best = ml.fit(s.dev, "y", algorithm="random_forest", seed=42)
+best = ml.fit(s.dev, "y", algorithm="rf", seed=42)
 final = ml.assess(best, test=s.test)
 ```
 
 Each line produces a typed output that constrains what the next line can accept.
 
-`split` creates a Partition (train, valid, test, and dev) with provenance tracked by content hash. `fit` accepts only data registered by `split`; anything else is rejected before training begins. `evaluate` checks the model against validation data and returns Metrics — repeatable, cheap, safe for iteration. This is the *iterate zone*: the practitioner re-fits and evaluates as many times as needed.
+`split` creates a Partition (train, valid, test, and dev) with provenance tracked by content hash. `fit` accepts only data registered by `split`; anything else is rejected before training begins. `evaluate` checks the model against validation data and returns Metrics: repeatable, cheap, safe for iteration. This is the *iterate zone*: the practitioner re-fits and evaluates as many times as needed.
 
-Only the final model proceeds to `assess`. It is fit on `s.dev` (train + valid combined) to use all available non-test data. `assess` returns Evidence — terminal, sealed, irreversible. A second call on the same holdout fails the guard. The methodologically incorrect pattern in the sklearn version is now structurally rejected: the first `assess` marks the holdout as spent in the provenance registry, and no amount of cloning, serializing, or restarting recovers it within the session.
+Only the final model proceeds to `assess`. It is fit on `s.dev` (train + valid combined) to use all available non-test data. `assess` returns Evidence: terminal, sealed, irreversible. A second call on the same holdout fails the guard. The methodologically incorrect pattern in the sklearn version is now structurally rejected: the first `assess` marks the holdout as spent in the provenance registry, and no amount of cloning, serializing, or restarting recovers it within the session.
 
 The canonical sklearn leakage example, normalizing before splitting (Class I), is structurally visible but empirically negligible ($d_z \approx 0$). The grammar prevents it too (unregistered data is rejected by `fit`), but the core contribution addresses the patterns a `Pipeline` does not: repeated test-set assessment ($d_z$ = `{python} c("peek.dz")`, $\Delta$AUC = +`{python} c("peek.auc", ".3")`) and training on evaluation data ($d_z$ = `{python} c("dup.nb.dz")`–`{python} c("dup.dt.dz")`, $\Delta$AUC = +`{python} c("dup.nb.auc", ".3")`–`{python} c("dup.dt.auc", ".3")`).
 
@@ -120,7 +120,7 @@ Eight operations. That is the entire grammar. Everything a supervised learning w
 
 $^g$ Guarded: requires a DataFrame with split provenance (registered by `split`).
 
-`assess` and `explain` are terminal: their output types (Evidence, Explanation) feed no further primitive. `cv` transforms a training or dev DataFrame into a CVResult — a rotation schedule of $k$ train/validation index pairs — separating boundary creation (`split`) from iteration (`cv`). Cross-validation is a non-test operation: `cv(s.train)` is the common case; `cv(s.dev)` is valid when the practitioner wants to cross-validate over the full development set. The test partition is never valid input. In v1.0, cross-validation was a variant inside Partition; extracting `cv` into its own primitive made the two concerns independently observable and swappable.
+`assess` and `explain` are terminal: their output types (Evidence, Explanation) feed no further primitive. `cv` transforms a training or dev DataFrame into a CVResult, a rotation schedule of $k$ train/validation index pairs — separating boundary creation (`split`) from iteration (`cv`). Cross-validation is a non-test operation: `cv(s.train)` is the common case; `cv(s.dev)` is valid when the practitioner wants to cross-validate over the full development set. The test partition is never valid input. In v1.0, cross-validation was a variant inside Partition; extracting `cv` into its own primitive made the two concerns independently observable and swappable.
 
 **`explain` and `predict` carry no partition guard.** Every other kernel primitive carries at least one partition guard: `prepare` and `fit` require registered `{train, valid, dev}`-tagged data; `evaluate` rejects test-tagged and unregistered data; `assess` requires test-tagged data and fires once per holdout. `explain` and `predict` require only a fitted Model. Both may be called on any data, any number of times, before or after `assess`. Explanation and prediction are diagnostic, not part of the validity chain; the grammar has no partition guard to place on them.
 
@@ -130,16 +130,17 @@ The **assess-once** constraint is a call-time guard, not a type error: a second 
 
 **Why 8?** The count is a design argument, not a theorem: 8 is the smallest set that covers the supervised learning lifecycle without collapsing a type boundary or losing a guard. Five primitives carry the load-bearing guards: `split`, `prepare`, `fit`, `evaluate`, and `assess`. The remaining three (`cv`, `predict`, `explain`) are structurally necessary: `predict` and `evaluate` both consume a Model, but `evaluate` requires `partition_tag != test`; merging them drops a guard. `prepare` returns a reusable Transformer; absorbing it into `fit` destroys consistent preprocessing of held-out data. `cv` produces CVResult; absorbing it into `split` hides rotation inside boundary logic. Removing any primitive loses either a type or a guard.
 
+\newpage
+
 ### The type DAG
 
 The primitives connect through a typed directed acyclic graph (Figure 1). Data flows downward from a single DataFrame through a split decision into three partitions. The `cv` primitive makes the fit/evaluate loop concrete: it transforms the training DataFrame into a rotation schedule ($k$ train/validation index pairs) that `fit` consumes fold by fold. Only after iteration converges does the model proceed to terminal assessment on held-out test data, producing evidence that cannot be revisited.
 
 \begin{figure}[H]
-\vspace{-1.5em}
-\noindent\hspace*{-0.25\textwidth}\includegraphics[width=1.3\textwidth,trim=0 40 0 40,clip]{dag-paper-bw.pdf}
-\vspace{-1em}
+\vspace{-0.5em}
+\centering\includegraphics[height=0.62\textheight,trim=0 30 0 50,clip]{dag-paper-bw.pdf}
+\vspace{-0.5em}
 \caption{The ML workflow grammar as a typed DAG. Diamond: split decision producing dev and test partitions. \texttt{cv} transforms the training DataFrame into train/valid fold rotations. Solid arrows: permitted data flow. Dashed arrows: locked until terminal assessment. Gate ($\times$): test partition held until \texttt{assess} is called once, producing terminal evidence. The fit--evaluate loop iterates on train/valid folds; \texttt{fit(dev)} retrains on the full development set before the final commitment.}
-\vspace{-1em}
 \end{figure}
 
 The Partition type exposes `.train`, `.valid`, `.test`, and `.dev` (train $\cup$ valid). Cross-validation [@stone1974cross] is a separate primitive (`cv`) that transforms a training DataFrame into a CVResult with `.folds` and `.k`; the test partition stays on the original Partition and is accessed at `assess` time. The full workflow with cross-validation:
@@ -147,22 +148,22 @@ The Partition type exposes `.train`, `.valid`, `.test`, and `.dev` (train $\cup$
 ```python
 s = ml.split(df, target="y", seed=42)
 c = ml.cv(s.train, folds=5, seed=42)
-model = ml.fit(c, "y", algorithm="random_forest", seed=42)
+model = ml.fit(c, "y", algorithm="rf", seed=42)
 metrics = ml.evaluate(model, s.valid)        # iterate zone
-best = ml.fit(s.dev, "y", algorithm="random_forest", seed=42)
+best = ml.fit(s.dev, "y", algorithm="rf", seed=42)
 evidence = ml.assess(best, test=s.test)      # terminal, once
 ```
 
-`cv` takes the training DataFrame and creates a $k$-fold rotation schedule — cross-validation is a training-set operation [@hastie2009elements, Ch. 7]; the test partition remains on the originating Partition, untouched. `fit` consumes the CVResult and trains across folds; `evaluate` measures on the held-out validation set (repeatable); `assess` produces sealed Evidence on test data (terminal). A second `assess` on the same holdout fails the guard. Preparation is handled inside `fit` by default (per fold); calling `prepare` explicitly is available for full control:
+`cv` takes the training DataFrame and creates a $k$-fold rotation schedule; cross-validation is a training-set operation [@hastie2009elements, Ch. 7]; the test partition remains on the originating Partition, untouched. `fit` consumes the CVResult and trains across folds; `evaluate` measures on the held-out validation set (repeatable); `assess` produces sealed Evidence on test data (terminal). A second `assess` on the same holdout fails the guard. Preparation is handled inside `fit` by default (per fold); calling `prepare` explicitly is available for full control:
 
 ```python
 prepped = ml.prepare(s.train, target="y")  # fit on train only
-model = ml.fit(prepped, "y", algorithm="random_forest", seed=42)
+model = ml.fit(prepped, "y", algorithm="rf", seed=42)
 ```
 
 **Domain specializations.** The implementation exposes `split`, `split_temporal`, and `split_group` as independent entry points, each with domain-specific parameters and guards. `split_temporal` carries guards that `split` does not: embargo enforcement, expanding-vs-sliding window policy, temporal ordering with no future leakage. `split_group` carries a group-non-overlap guard that is meaningless for random splits. The same pattern applies to `cv`, `cv_temporal`, and `cv_group`. All specializations share the type signature `DataFrame → Partition` (or `DataFrame → CVResult` for cv variants); what differs is the guard system.
 
-The specializations are constraint profiles, not type distinctions: each conjugates the same grammatical verb for a different scientific domain. Time series forecasting, where expanding-window validation is essential regardless of model architecture [@ballarin2024reservoir]. Grouped data with repeated observations per unit, where subject-level splitting prevents within-patient leakage [@tampu2022inflation]. Standard cross-sectional ML. The primitive count remains 8; the API surface reflects that different fields require different structural constraints on the same operation.
+The specializations are constraint profiles, not type distinctions: each conjugates the same grammatical verb for a different scientific domain. Time series forecasting, where expanding-window validation prevents future leakage [e.g., @ballarin2024reservoir]. Grouped data with repeated observations per unit, where subject-level splitting prevents within-unit leakage [e.g., @tampu2022inflation]. Standard cross-sectional ML. The primitive count remains 8; the API surface reflects that different fields require different structural constraints on the same operation.
 
 ### The four hard constraints
 
@@ -175,9 +176,9 @@ The specializations are constraint profiles, not type distinctions: each conjuga
 
 : {tbl-colwidths="[5,22,38,22,13]"}
 
-Constraints 1 and 4 both target Class II leakage; they differ in mechanism (per-holdout registry vs. provenance gate at `fit`). The companion study [@roth2026landscape] measured the effects these constraints prevent: at the corpus median ($n \approx 1{,}900$), peeking inflates by $d_z$ = `{python} c("peek.dz")` and seed cherry-picking by $d_z$ = `{python} c("seed.dz")` — enough to flip a model from "below threshold" to "deployable." Class III memorization effects ($d_z$ = `{python} c("dup.nb.dz")`–`{python} c("dup.dt.dz")`) scale with model capacity. Constraint 2 addresses an effect that is empirically negligible ($d_z \approx 0$) — but it costs nothing (per-fold preparation is the default), and no reviewer will object to a grammar that prevents what textbooks unanimously recommend against.
+Constraints 1 and 4 both target Class II leakage; they differ in mechanism (per-holdout registry vs. provenance gate at `fit`). The companion study [@roth2026landscape] measured the effects these constraints prevent: at the corpus median ($n \approx 1{,}900$), peeking inflates by $d_z$ = `{python} c("peek.dz")` and seed cherry-picking by $d_z$ = `{python} c("seed.dz")` — enough to flip a model from "below threshold" to "deployable." Class III memorization effects ($d_z$ = `{python} c("dup.nb.dz")`–`{python} c("dup.dt.dz")`) scale with model capacity. Constraint 2 addresses an effect that is empirically negligible ($d_z \approx 0$). But it costs nothing (per-fold preparation is the default), and no reviewer will object to a grammar that prevents what textbooks unanimously recommend against.
 
-Four rules. Codd needed twelve relational rules and eventually struggled with the count. Chomsky's early programme required increasingly many syntactic rules before principles-and-parameters reduced the apparatus. The grammar chooses minimality: state the inviolable properties, leave everything else to the implementation.
+Four rules. Codd needed twelve relational rules and eventually struggled with the count. Chomsky's early programme required increasingly many syntactic rules before principles-and-parameters reduced the apparatus. The grammar chooses minimality: four constraints that cannot be violated, everything else left to the implementation.
 
 ### Strategy families {#sec-strategy}
 
@@ -214,7 +215,7 @@ No strategy requires a new primitive: each reduces to typed applications of the 
 
 Two of three confirmed; one falsified. The confirmed predictions were not equally risky: screen inflation was consistent with @cawley2010overfitting's prior findings on selection bias, so its confirmation was expected. Seed inflation was the more novel claim. The falsified prediction (stack leakage) was structurally safe to lose: the grammar's correctness does not depend on stacking being leaky. The falsification is evidence that the grammar generates specific, wrong-able hypotheses, not post-hoc rationalization. The full experimental results are in @sec-empirical.
 
-The grammar generates further predictions. The companion study already provides partial evidence for some (nested CV bias is measured indirectly through the HP tuning experiment; the neural network capacity prediction is stated in both papers). Two predictions remain genuinely open: (1) an between-subjects experiment should show that the grammar's structural enforcement reduces leakage rates in human-written code compared to sklearn — if it does not, the grammar is correct but practically inert; (2) the grammar should produce the same leakage reduction for LLM-generated code as for human-written code — if the structural guarantee holds, the author's species should not matter.
+The grammar generates further predictions. The companion study already provides partial evidence for some (nested CV bias is measured indirectly through the HP tuning experiment; the neural network capacity prediction is stated in both papers). Two predictions remain genuinely open: (1) a between-subjects experiment should show that the grammar's structural enforcement reduces leakage rates in human-written code compared to sklearn — if it does not, the grammar is correct but practically inert; (2) the grammar should produce the same leakage reduction for LLM-generated code as for human-written code — if the structural guarantee holds, the author's species should not matter.
 
 ### The terminal boundary
 
@@ -283,9 +284,9 @@ Here is where the grammar earns its keep. Each row below is a workflow that look
 | prepare(all) $\to$ split $\to$ fit | Prepare must follow split | Class I |
 | select\_features(X, y) $\to$ split $\to$ fit | No unregistered data into `fit` | Class II |
 | evaluate(data) without prior fit | Type error: no Model | Class III |
-| prepare(test) | Guard: test tag not in {train, valid, dev} | Class II |
+| prepare(test) | Guard: test tag not in {train, valid, dev} | Class I |
 | fit(test) | Guard: test tag not in {train, valid, dev} | Class III |
-| evaluate(test) | Guard: test tag reserved for assess | Class III |
+| evaluate(test) | Guard: test tag reserved for assess | Class II |
 
 : {tbl-colwidths="[40,40,20]"}
 
@@ -293,9 +294,10 @@ Concretely, an invalid workflow raises at the verb boundary:
 
 ```python
 s = ml.split(df, target="y", seed=42)
-m = ml.fit(s.dev, "y", algorithm="random_forest", seed=42)
+m = ml.fit(s.dev, "y", algorithm="rf", seed=42)
 e1 = ml.assess(m, test=s.test)   # succeeds
-e2 = ml.assess(m, test=s.test)   # raises PartitionError: test holdout already assessed
+e2 = ml.assess(m, test=s.test)   # fails
+# PartitionError: test holdout already assessed
 ```
 
 **Assess-once (by construction).** Constraint 1 specifies: for test partition $t$, assess($m$, $t$) is valid if and only if $t$ has not been previously assessed in the provenance registry, regardless of which model. After the first call, $t$ is marked as assessed; any subsequent call on the same holdout — same model or different — fails the guard. The implementations additionally set $m$.assessed $\gets$ true as a fast-path diagnostic, but the per-holdout check is the structurally load-bearing enforcement. Similarly, prepare(all\_data) before split violates Constraint 2 (the data is unregistered in the provenance registry, so the guard rejects it), and select\_features(X, y) before split violates Constraint 4. All three are rejected at call time. These are not theorems; they are consequences of the type guards. The claim is that any conforming implementation must enforce them. The Appendix (§ Invalid workflows as guard failures) walks through each entry in the table above.
@@ -324,7 +326,7 @@ The grammar is implemented in two languages: Python (`mlw` on PyPI, imported as 
 import ml
 
 s = ml.split(df, target = "y", seed = 42)
-model = ml.fit(s.train, "y", algorithm = "random_forest", seed = 42)
+model = ml.fit(s.train, "y", algorithm = "rf", seed = 42)
 metrics = ml.evaluate(model, s.valid)
 final = ml.assess(model, test=s.test)
 ```
@@ -334,7 +336,7 @@ final = ml.assess(model, test=s.test)
 library(ml)
 
 s <- ml_split(df, target = "y", seed = 42)
-model <- ml_fit(s$train, "y", algorithm = "random_forest", seed = 42)
+model <- ml_fit(s$train, "y", algorithm = "rf", seed = 42)
 metrics <- ml_evaluate(model, s$valid)
 final <- ml_assess(model, test = s$test)
 ```
@@ -358,18 +360,19 @@ An implementation is conforming if and only if it satisfies all eight. Each is t
 
 In predicate notation, where $\text{tag}(d)$ denotes the partition tag of DataFrame $d$, $\text{reg}(d)$ denotes registration in the provenance registry, and $\text{assessed}(t)$ denotes whether test partition $t$ has been assessed:
 
-\begin{align}
-\text{CC1:} &\quad \texttt{split}(d) \to \text{Partition}(p) \text{ where } \text{tag}(p_i) \in \{\text{train}, \text{valid}, \text{test}, \text{dev}\} \\
-\text{CC2:} &\quad \texttt{fit}(d) \Rightarrow \text{reg}(d) \land \text{tag}(d) \in \{\text{train}, \text{valid}, \text{dev}\} \\
-\text{CC3:} &\quad \texttt{evaluate}(m, d) \Rightarrow \text{fitted}(m); \quad \texttt{assess}(m, t) \Rightarrow \text{fitted}(m) \\
-\text{CC4:} &\quad \texttt{assess}(m, t) \Rightarrow \text{tag}(t) = \text{test} \land \neg\text{assessed}(t); \quad \text{after: } \text{assessed}(t) := \top \\
-\text{CC5:} &\quad \text{mode}(\texttt{fit}) = \text{declarative} \Rightarrow \forall k \in [1..K]: \text{state}(\texttt{prepare}_k) \perp \text{state}(\texttt{prepare}_{j \neq k}) \\
-\text{CC6:} &\quad \text{Evidence} \not<: \text{Metrics} \quad [\texttt{isinstance} \text{ distinguishable in host language}] \\
-\text{CC7:} &\quad \texttt{cv}(d).\{\text{train}, \text{valid}, \text{test}, \text{dev}\} \to \texttt{error} \\
-\text{CC8:} &\quad \texttt{evaluate}(m, d) \Rightarrow \text{tag}(d) \neq \text{test}
-\end{align}
+\begin{enumerate}
+\setlength{\itemsep}{2pt}
+\item[(1)] $\texttt{split}(d) \to \text{Partition}(p) \text{ where } \text{tag}(p_i) \in \{\text{train}, \text{valid}, \text{test}, \text{dev}\}$
+\item[(2)] $\texttt{fit}(d) \Rightarrow \text{reg}(d) \land \text{tag}(d) \in \{\text{train}, \text{valid}, \text{dev}\}$
+\item[(3)] $\texttt{evaluate}(m, d) \Rightarrow \text{fitted}(m); \quad \texttt{assess}(m, t) \Rightarrow \text{fitted}(m)$
+\item[(4)] $\texttt{assess}(m, t) \Rightarrow \text{tag}(t) = \text{test} \land \neg\text{assessed}(t); \;\; \text{after: } \text{assessed}(t) := \top$
+\item[(5)] $\texttt{fit}_{\text{declarative}} \Rightarrow \forall k: \text{state}(\texttt{prep}_k) \perp \text{state}(\texttt{prep}_{j \neq k})$
+\item[(6)] $\text{Evidence} \not<: \text{Metrics}$ \; [\texttt{isinstance} distinguishable in host language]
+\item[(7)] $\texttt{cv}(d).\{\text{train}, \text{valid}, \text{test}, \text{dev}\} \to \texttt{error}$
+\item[(8)] $\texttt{evaluate}(m, d) \Rightarrow \text{tag}(d) \neq \text{test}$
+\end{enumerate}
 
-The practical value of the conformance conditions is decidability: without a grammar, "does this workflow have structural leakage?" has no principled answer. With it, structural correctness is checkable in constant time: eight primitives in the type DAG, four hard constraints, eight conformance conditions. Methodological correctness (algorithm choice, metric selection, sample adequacy) remains a judgment call. The test produces a binary verdict, not an opinion.
+The practical value of the conformance conditions is decidability: without a grammar, "does this workflow have structural leakage?" has no principled answer. With it, structural correctness is checkable in constant time: eight primitives in the type DAG, four hard constraints, eight conformance conditions. Methodological adequacy (algorithm choice, metric selection, sample size) remains a judgment call. The test produces a binary verdict, not an opinion.
 
 All eight conditions are verifiable from the API surface: `fit` rejects unregistered data with a `PartitionError` whose message directs the user to `split` first; `cv` returns a CVResult that raises on partition access. The closed-world limitation of prior versions (where untagged data passed silently) is closed.
 
@@ -391,10 +394,12 @@ The grammar claims to do something that, to my knowledge, no existing framework 
 | Framework | Per-fold prep | Terminal assess | Provenance | Reject at call time |
 |-----------|:---:|:---:|:---:|:---:|
 | **sklearn** | via Pipeline$^p$ | — | — | — |
+| | | | | |
 | **tidymodels** | via recipes$^p$ | `last_fit()`$^l$ | — | — |
+| | | | | |
 | **ml (this grammar)** | default | `assess()`$^b$ | content-addressed | **yes** |
 
-{\footnotesize $^p$Inside Pipeline/workflow only; manual preprocessing outside leaks silently. $^l$Encourages one-shot but does not guard against bypass. $^b$On by default; `config(guards="off")` provides an explicit, auditable override — tidymodels does not have this gate at all, so there is nothing to escape from. The difference is default posture: the grammar defaults to enforcement and requires an explicit exit; tidymodels defaults to flexibility and requires an explicit workflow to get enforcement.}
+{\footnotesize $^p$Inside Pipeline/workflow only; manual preprocessing outside leaks silently. $^l$Encourages one-shot but does not guard against bypass. $^b$On by default; `config(guards="off")` disables all guards. Operations outside the grammar's eight primitives (e.g., raw sklearn preprocessing) are not covered regardless. The difference is default posture: the grammar defaults to enforcement and requires an explicit exit; sklearn and tidymodels default to flexibility.}
 
 The grammar leads on methodological enforcement (the four columns above) but trails on ecosystem breadth, maturity, and arbitrary code coverage. sklearn's 17-year ecosystem and tidymodels' integration with the R tidyverse are strengths the grammar does not replicate.
 
@@ -432,7 +437,7 @@ The individual primitives (split, fit, evaluate, predict) are present in every M
 
 3. **Empirical grounding.** Each constraint is connected to a measured effect size [@roth2026landscape]: peeking at $K = 10$ produces $d_z$ = `{python} c("peek.dz")`, seed inflation follows $\log(K)$ ($R^2 > 0.99$), and at practical sizes the noise is $\sim\!90\%$ of the measured effect. The constraints target what costs the most, not what sounds worst.
 
-Enforcement mechanisms form a natural hierarchy: documentation < linting [@yang2022leakage] < static analysis [@drobnjakovic2024abstract] < call-time guards (this grammar) < dependent types. The grammar occupies the runtime-guard position, the strongest enforcement available in dynamically typed languages without external tooling.
+Enforcement mechanisms form a natural hierarchy by how hard they are to bypass: documentation < linting [@yang2022leakage] < static analysis [@drobnjakovic2024abstract] < call-time guards (this grammar) < dependent types. The grammar occupies the runtime-guard position, the strongest enforcement available in dynamically typed languages without external tooling.
 
 
 ## Empirical Motivation {#sec-empirical}
@@ -448,9 +453,9 @@ The grammar's formal properties are verifiable from the specification alone; a r
 
 : {tbl-colwidths="[7,25,30,38]"}
 
-The four classes are defined by mechanism [@kaufman2012leakage; @roth2026landscape]; the grammar targets the classes with large effects. Class I effects are negligible at any sample size, consistent with @bousquet2002stability's stability theory. Every selection mechanism decomposes into noise exploitation ($\sigma\sqrt{2\ln K}$, where $\sigma \sim 1/\sqrt{n}$) and genuine diversity (the true performance spread across the selection pool). At the corpus median ($n \approx 1{,}900$), approximately 90% of the measured Class II effect is real noise exploitation — selection bias that inflates reported scores. Under any violation of the i.i.d. assumption — temporal shift, group structure, spatial correlation — the inner-CV optimism becomes structural bias that does not decay with $n$, because more data from a biased sampling process does not correct the bias. Random cross-validation does not prevent this structural leakage — it censors the evidence by destroying the structure that would reveal it. The grammar's boundary-aware primitives (`split_temporal`, `split_group`, `cv_temporal`, `cv_group`) address the structural layer; the terminal assess gate addresses the selection layer on top. The measured leakage types are samples from an infinite category of provenance violations *within the grammar's scope*: the grammar prevents the category, not just the measured samples (this follows by construction from the guard definitions, not from empirical coverage). Contamination baked into the raw data before any primitive touches it — a feature that encodes the target, a generating process that shifted silently — is invisible to the provenance system. Class III effects are capacity-dependent: decision trees memorize more than random forests. Full effect sizes, decomposition analysis, and confidence intervals are reported in the companion study [@roth2026landscape].
+The four classes are defined by mechanism [@kaufman2012leakage; @roth2026landscape]; the grammar targets the classes with large effects. Class I effects are negligible at any sample size, consistent with @bousquet2002stability's stability theory. Every selection mechanism decomposes into noise exploitation ($\sigma\sqrt{2\ln K}$, where $\sigma \sim 1/\sqrt{n}$) and genuine diversity (the true performance spread across the selection pool). At the corpus median ($n \approx 1{,}900$), approximately 90% of the measured Class II effect is real noise exploitation — selection bias that inflates reported scores. Under any violation of the i.i.d. assumption — temporal shift, group structure, spatial correlation — the inner-CV optimism becomes structural bias that does not decay with $n$, because more data from a biased sampling process does not correct the bias. Random cross-validation does not prevent this structural leakage — it censors the evidence by destroying the structure that would reveal it. The grammar's boundary-aware primitives (`split_temporal`, `split_group`, `cv_temporal`, `cv_group`) address the structural layer; the terminal assess gate addresses the selection layer on top. The measured leakage types are samples from an infinite category of provenance violations *within the grammar's scope*: the grammar prevents the category, not just the measured samples (this follows by construction from the guard definitions, not from empirical coverage). Contamination baked into the raw data before any primitive touches it — a feature that encodes the target, a generating process that shifted silently — is invisible to the provenance registry. Class III effects are capacity-dependent: decision trees memorize more than random forests. Full effect sizes, decomposition analysis, and confidence intervals are reported in the companion study [@roth2026landscape].
 
-The 2,047 datasets were split at the *dataset level* into discovery ($k = 1{,}007$) and confirmation ($k = 1{,}040$) halves by deterministic MD5 hash of the dataset identifier, fixed before analysis. The three grammar predictions (@sec-strategy) were tested: two confirmed, one falsified. Full distributional results replicate across both halves and are reported in [@roth2026landscape].
+The design is within-subject counterfactual: a clean workflow and a leaky workflow run on the same data, the same folds, the same seed. Only the leakage perturbation differs. Both outcomes are observed for every dataset, so each $\Delta$AUC is an individual treatment effect, not an estimate. All AUC values are computed from out-of-fold predictions. The 2,047 datasets were split at the *dataset level* into discovery ($k = 1{,}007$) and confirmation ($k = 1{,}040$) halves by deterministic MD5 hash, fixed before analysis. Every finding replicates on the independent confirmation half with zero failures. Three grammar predictions were tested before observing results: two confirmed, one falsified [@roth2026landscape].
 
 
 \newpage
@@ -490,7 +495,7 @@ Below approximately $N = 30$, the grammar's three-way split becomes statisticall
 
 : {tbl-colwidths="[15,30,55]"}
 
-The deeper constraint is not raw $N$ but the ratio of events to predictors: logistic regression needs approximately 20 events per predictor [@riley2019minimum], while tree ensembles need 3,000+ [@vanderploeg2014modern]. The grammar's real contribution at small $N$ is discipline: separate what you learn on from what you judge on. That discipline applies at every $N$. The mechanism of separation requires a minimum investment of observations.
+The deeper constraint is not raw $N$ but the ratio of events to predictors: logistic regression needs approximately 10–20 events per predictor [see @riley2019minimum for modern guidance], while tree ensembles need 3,000+ [@vanderploeg2014modern]. The grammar's real contribution at small $N$ is discipline: separate what you learn on from what you judge on. That discipline applies at every $N$. The mechanism of separation requires a minimum investment of observations.
 
 ### Domain scope
 
@@ -500,7 +505,7 @@ The grammar covers tabular supervised learning (@sec-design-properties). Both `e
 
 External validation is the missing piece and the paper's most important open question. This paper is a specification paper with reference implementations: the type system, guards, and conformance conditions are verifiable from the specification alone. Whether the grammar reduces leakage errors in practice is a separate empirical question that the specification does not answer. Wickham had ggplot2 users before the grammar paper; here the sequence is reversed. But when pipelines are increasingly generated rather than written, the grammar's value does not depend on human adoption — it depends on whether the APIs that LLMs call enforce correctness the models themselves cannot. A between-subjects experiment comparing leakage rates in student code written with the grammar versus sklearn, scored by an automated checker blind to condition, would test the central claim directly. The relevant effect size is not the leakage magnitude ($d_z$ = `{python} c("peek.dz")` for Class II) but the difference in leakage *rates* between conditions — a behavioral quantity that is unknown until the study is run. If the grammar eliminates leakage in the treatment arm entirely (the structural guarantee predicts this), the effect size depends on the baseline leakage rate in the control arm. At a conservative $d = 0.8$, a two-group design with $n = 25$ per arm achieves 80% power at $\alpha = 0.05$; the study is feasible at classroom scale. If the grammar does not measurably reduce leakage in human-written code, the type system is correct but practically inert. That outcome is possible and would be informative.
 
-A partial answer comes from LLM-generated code. A companion study in preparation [@roth2026shortpath] uses LLMs as a proxy for code authors — not because LLMs are representative of human developers, but because they can be prompted at scale with controlled dose-response designs that would be infeasible with human subjects. The core finding is qualitative: when asked to build an ML pipeline, the majority of models default to the shortest path — and the shortest path leaks. Asking nicely does not fix this; only structurally specific instructions close the gap, and even then only for a minority of models. The grammar's structural enforcement — where invalid compositions are rejected at call time rather than flagged after the fact — provides a class of guarantee that no amount of prompting can replicate: the difference between observing zero leakage in a sample and proving it structurally impossible. As LLM-generated code becomes the default ML entry point, leaky pipelines will accelerate unless the APIs those models call enforce correctness the models themselves cannot. The human between-subjects design remains the definitive test.
+A partial answer comes from LLM-generated code. A companion study in preparation [@roth2026shortpath] uses LLMs as a proxy for code authors, prompted at scale with controlled dose-response designs that would be infeasible with human subjects. Preliminary results suggest that when asked to build an ML pipeline, the majority of models default to the shortest path — and the shortest path leaks. If confirmed, this would mean that structural enforcement at the API level is the only guarantee that scales when pipelines are generated at machine speed. The human between-subjects design remains the definitive test.
 
 ### Enforcement gaps {#sec-enforcement-gaps}
 
@@ -537,17 +542,17 @@ This progressive slowdown — free on train, metered on valid, terminal on test 
 
 ## Conclusion
 
-The evaluate/assess boundary is not a rule to follow; it is a constraint the implementation enforces. The types remember so you don't have to. Time currently spent on unsafe exploration (fitting on test data, leaking preprocessing across folds, re-assessing holdouts until results look favorable) is forced into the evaluate zone, where iteration is unlimited but metered, and therefore honest.
+The evaluate/assess boundary is not just a textbook rule to follow; it is a constraint this grammar enforces. Its type system remembers the rules so you don't have to. Time currently spent on unsafe exploration (fitting on test data, leaking preprocessing across folds, re-assessing holdouts until results look favorable) is forced into the evaluate zone, where iteration is unlimited but metered, and therefore honest.
 
-Eight primitives, four constraints, two reference implementations (Python, R), and a companion study across `{python} c("n_datasets")` datasets [@roth2026landscape]: the grammar is internally consistent and the implementations satisfy the conformance conditions. At practical dataset sizes, the leakage classes the grammar rejects produce substantial effects — approximately 90% noise exploitation ($\sigma\sqrt{2\ln K}$) that is real, measurable, and preventable. Under any violation of the i.i.d. assumption — the regime of every real deployment — the selection bias becomes irreducible because past evaluation is a biased estimator of future performance, and random cross-validation censors the evidence by destroying the structure that would reveal it. The grammar addresses both layers: boundary-aware splitting for the structural contamination, terminal assess and $K$-metering for the selection noise on top. Three directional predictions recorded before observing results: two confirmed, one falsified. The grammar is falsifiable and has survived its initial tests.
+Eight primitives, four constraints, two reference implementations (Python, R), and a companion study across `{python} c("n_datasets")` datasets [@roth2026landscape]: the grammar is internally consistent and the implementations satisfy the conformance conditions. At practical dataset sizes, the leakage classes the grammar rejects produce substantial effects — approximately 90% noise exploitation ($\sigma\sqrt{2\ln K}$) that is substantial, empirically grounded, and preventable at call time by rejection. Under any violation of the i.i.d. assumption — the regime of every real deployment — the selection bias becomes irreducible because past evaluation is a biased estimator of future performance, and random cross-validation censors the evidence by destroying the structure that would reveal it. The grammar addresses both layers: boundary-aware splitting for the structural contamination, $K$-metering for making selection pressure visible, and terminal assess as the final safety net for assumption violations and implementation bugs that no earlier layer caught. Three directional predictions recorded before observing results: two confirmed, one falsified. The grammar is falsifiable and has survived its initial tests.
 
-The type DAG and four constraints are frozen at v1.0: they define what a conforming implementation must satisfy. Future revisions follow semver: constraint additions increment the major version; verb-level changes increment the minor version. Whether the grammar reduces leakage errors in practice remains the central empirical question (@sec-external-validation). A companion study in preparation [@roth2026shortpath] addresses a related test for LLM-generated code; preliminary results suggest that the grammar eliminates a class of error that persists even under the most explicit natural-language guidance. As ML pipelines are increasingly generated rather than written, the grammar's role shifts from constraining the human to constraining the generator.
+The type DAG and four constraints are frozen at v1.0. Whether the grammar reduces leakage errors in practice remains the central empirical question (@sec-external-validation). Preliminary results from a companion study [@roth2026shortpath] suggest that it eliminates a class of error in LLM-generated code that persists even under explicit natural-language guidance. As pipelines are increasingly generated rather than written, the grammar's role shifts from constraining the human to constraining the generator.
 
-The grammar addresses a problem that is simultaneously technical and human. The bias literature has long recognized that monitoring model biases requires coverage of the *entire* computational pipeline — from data collection through validation and deployment — and that simple goodness of fit is not enough to judge predictive quality or fairness [@roth2022biased]. When automated decision-making replaces human judgment, the risk of bias does not merely persist; it multiplies, because biases become harder to detect, harder to attribute, and faster to propagate. Leakage and bias are distinct failures, but they share a root cause: pipeline stages that should be isolated are not. A model whose evaluation is contaminated by training data cannot be trusted to measure bias either. The grammar does not detect bias, but it closes the methodological precondition: honest measurement requires honest evaluation, and honest assessment is what the type system enforces.
+Leakage and bias are distinct failures, but they share a root cause: pipeline stages that should be isolated are not [@roth2022biased]. A model whose training process is contaminated by test data cannot be trusted to measure bias either. The grammar does not detect bias, but it closes the methodological precondition: honest measurement requires honest evaluation, and honest assessment is what the type system enforces.
 
-A researcher who fits her imputer on the full dataset before splitting is not cutting corners; she is using software that treats the split as an afterthought. A social scientist who selects predictors on the pooled sample before cross-validating is not unfamiliar with overfitting; his statistics package presented variable selection and validation as independent steps. An economist who reports in-sample $R^2$ is not ignorant of holdout methodology; the holdout was two menu options deeper buried than the default workflow. An automated retraining pipeline that refits monthly on all available data, including the month it will immediately score, is not malfunctioning; it is fulfilling its update schedule. A language model asked to generate a pipeline will select the best out of 100 model families on the test set — because that is the modal pattern in its training distribution, and no gradient pointed away from it. The 648 papers with leakage errors are not anomalies; they are the expected output of a field whose knowledge outpaced its tooling.
+A researcher who fits her imputer on the full dataset before splitting is not cutting corners; she is using software that treats the split as an afterthought. A social scientist who selects predictors on the pooled sample before cross-validating is not unfamiliar with overfitting; his statistics package presented variable selection and validation as independent steps. An economist who reports in-sample $R^2$ is not ignorant of holdout methodology; the holdout was two menu options deeper buried than the default workflow. An automated retraining pipeline that refits monthly on all available data, including the month it will immediately score, is not malfunctioning; it is fulfilling its update schedule. A language model asked to generate a pipeline will select the best out of 100 model families on the test set — because that is the modal pattern in its training distribution, and no gradient pointed away from it. The 648 papers with leakage errors are not anomalies; they are the expected output of a field whose methodological knowledge outpaced its tooling.
 
-The grammar does not require the field to learn something new. It requires the tools to enforce what the field already knows. The training boundary should be a first-class type, and leakage should be a violation, not a matter of professional discipline. Professional discipline varies across career stages, institutions, and time zones. Type systems do not. As pipelines are increasingly generated at machine speed — by AutoML systems, LLM code generators, and automated retraining schedules — the structural guarantee becomes the only guarantee that scales. Investment allocation, credit scoring, medical diagnosis, recidivism prediction: when the pipeline that produces the number runs faster than any methodology review can follow, the question is not whether the practitioner knows the rules. The question is whether the tool really enforces them.
+The grammar does not require the field to learn something new. It requires the tools to enforce what the field already knows. The training boundary should be a first-class type, and leakage should be a violation, not a matter of professional discipline. Professional discipline varies across career stages, institutions, and time zones. Type systems do not. As pipelines are increasingly generated at machine speed — by AutoML systems, LLM code generators, and automated retraining schedules — the structural guarantee becomes the only guarantee that scales. Investment allocation, credit scoring, medical diagnosis, recidivism prediction: when the pipeline that produces the number runs faster than any methodology review can follow, the question is not whether the practitioner knows the rules. The question is whether the tool enforces them at call time.
 
 
 \newpage
@@ -556,7 +561,7 @@ The grammar does not require the field to learn something new. It requires the t
 
 ### Type system
 
-The grammar is a typed specification over nine types. Each primitive has a type signature, a guard (precondition checked at call time), and an effect (state mutation after call). Two types are terminal (their values feed no further primitive):
+The grammar is a typed specification over nine types. Each primitive has a type signature, a guard (precondition checked at call time), and an effect (state mutation after call). Three types are terminal (their values feed no further primitive):
 
 | Type | Structure | Terminal |
 |------|-----------|:-------:|
@@ -649,6 +654,6 @@ This work was conducted independently and received no external funding. I thank 
 
 ## Disclosure {.unnumbered}
 
-Large language models (Claude, Anthropic) were used as principal writing, analysis, and implementation tools during the preparation of this manuscript. All scientific claims, experimental designs, empirical results, and theoretical contributions are the author's own. The author takes full responsibility for the content.
+Large language models (Claude, Anthropic) were used as principal writing, analysis, and implementation tools during the preparation of this manuscript. All scientific claims, experimental designs, empirical results, and theoretical contributions are my own. I take full responsibility for the content.
 
 ## References {.unnumbered}

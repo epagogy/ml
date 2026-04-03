@@ -8,7 +8,7 @@ author:
     affiliations:
       - name: Independent researcher
 keywords: [data leakage, cross-validation, reproducibility, effect size, benchmark, meta-regression]
-date: "2026-04-02"
+date: "2026-04-03"
 date-format: "MMMM D, YYYY"
 format:
   pdf:
@@ -42,7 +42,7 @@ from claims import c, _CLAIMS
 
 This distinction matters. A leakage type that inflates AUC by 0.001 on average is a theoretical impurity. One that inflates it by +`{python} c("peek.auc", ".3")` in `{python} c("peek.prev", "%")` of datasets is a practical crisis. The appropriate response (how much engineering effort to invest in prevention, which leakage to audit first, what to teach students) depends on magnitude, not merely on existence. To my knowledge, no prior study has measured multiple leakage types at scale on a shared corpus with a unified metric.
 
-I fill this gap with twenty-eight experiments, each a controlled perturbation of a standard 5-fold cross-validation workflow, run across `{python} c("n_datasets")` binary classification datasets from OpenML, PMLB, and ml. For every dataset and every leakage type, I measure the AUC difference between the leaky procedure and the clean procedure, yielding a quantitative landscape of leakage effects. I embed internal validation (not pre-registered, but built into the design): deterministic hashes split the corpus at both the dataset level (discovery vs. confirmation) and the partition level, with content-addressed tracking throughout. All testable effects replicate on the held-out confirmation split with zero failures.
+I fill this gap with twenty-nine experiments (twenty-eight core plus a boundary experiment on temporal data), each a controlled perturbation of a standard 5-fold cross-validation workflow, run across `{python} c("n_datasets")` binary classification datasets from OpenML, PMLB, and ml. For every dataset and every leakage type, I measure the AUC difference between the leaky procedure and the clean procedure, yielding a quantitative landscape of leakage effects. I embed internal validation (not pre-registered, but built into the design): deterministic hashes split the corpus at both the dataset level (discovery vs. confirmation) and the partition level, with content-addressed tracking throughout. All testable effects replicate on the held-out confirmation split with zero failures.
 
 The central finding is that effect sizes span more than an order of magnitude in raw $\Delta$AUC across leakage types ($< 0.005$ for estimation leakage to $> 0.07$ for memorization leakage at extreme settings), and the variation is predicted almost entirely by causal mechanism. This is not a continuous spectrum. It is a categorical distinction. Three classes emerge from the core experiments; a fourth emerges from a boundary experiment on temporal data:
 
@@ -71,7 +71,7 @@ Two recent studies come closest to a multi-type comparison. @rosenblatt2024data 
 
 **Detection and prevention tools.** Since 2024, automated leakage detection has accelerated. @drobnjakovic2025abstract applied abstract interpretation to ML notebook code, tracking partition-membership labels through data-flow operations at 93% precision. @truong2025leakagedetector2 extended LeakageDetector to Jupyter pipelines with LLM-driven corrections. @apicella2025button documented how black-box ML tool usage amplifies leakage risk in transfer learning. @becker2025gap independently confirmed that feature selection causes the strongest distortions, consistent with the Class II findings reported here. These tools detect leakage after the fact; the present study quantifies how much each type matters.
 
-**Adaptive data analysis.** @dwork2015reusable formalized the dangers of reusing holdout data for multiple adaptive decisions, showing that validity degrades with repeated access. Their "reusable holdout" framework — which uses differential-privacy mechanisms to allow controlled repeated access with quantified accuracy guarantees — provides a theoretical foundation for why peeking produces O(1) bias: each adaptive decision using the same evaluation set transfers information from that set into the model, regardless of sample size. The assess-once constraint proposed in the companion grammar [@roth2026grammar] is the zero-reuse limit of this framework ($\epsilon = 0$): rather than permitting controlled repeated access, it permits no reuse at all, trading the reusable holdout's flexibility for enforceability in a static type system.
+**Adaptive data analysis.** @dwork2015reusable formalized the dangers of reusing holdout data for multiple adaptive decisions, showing that validity degrades with repeated access. Their "reusable holdout" framework — which uses differential-privacy mechanisms to allow controlled repeated access with quantified accuracy guarantees — provides a theoretical foundation for why peeking produces O(1) bias: each adaptive decision using the same evaluation set transfers information from that set into the model, regardless of sample size. The assess-once constraint proposed in the companion grammar [@roth2026grammar] is the zero-reuse limit of this framework ($\epsilon = 0$): rather than permitting controlled repeated access, it permits no reuse within a session, trading the reusable holdout's flexibility for enforceability in a static type system.
 
 **Cross-validation uncertainty.** @arlot2010survey provide the definitive survey of cross-validation procedures. @bengio2004noUnbiased proved that no unbiased estimator of cross-validation variance exists, and @nadeau2003inference proposed a corrected variance estimate accounting for the non-independence of overlapping folds. @dietterich1998approximate compared five statistical tests for algorithm comparison, establishing that paired tests on shared folds are anti-conservative. @bates2024crossvalidation showed that standard k-fold confidence intervals can be arbitrarily wrong in theory. @varoquaux2018crossvalidation demonstrated $\pm 10\%$ error bars at n = 100 in neuroimaging studies. @tsamardinos2018bootstrap proposed bootstrapping out-of-sample predictions as an alternative with improved coverage properties. I measure this coverage gap empirically across 2,047 datasets (Experiment AO).
 
@@ -100,13 +100,15 @@ The design is a within-subject counterfactual experiment: each dataset and model
 
 The clean baseline is a correct 5-fold CV workflow, not an oracle; it may itself carry positive selection bias from model selection on the validation folds [@cawley2010overfitting], making the reported Class II $\Delta$AUC values conservative lower bounds relative to a true oracle evaluation. A deeper limitation: random stratified CV itself censors structural contamination. If a dataset contains repeated measures per subject, temporal ordering, or spatial proximity, random folding scatters correlated observations across folds, and the "clean" baseline already benefits from this structural leakage. The measured $\Delta$AUC captures selection bias *on top of* this invisible structural contamination; on datasets with real temporal or group structure, the total leakage prevented by boundary-aware evaluation (e.g., group CV, temporal CV) would be larger — though a boundary experiment on 129 temporal datasets (@sec-boundary) shows the average effect is near zero on typical benchmarks and substantial only where real distribution drift exists. All $\Delta$AUC values measure deviation from this baseline, not from the true generalization error. Critically, all AUC values are computed from out-of-fold predictions: each observation is scored only by a model that never saw it during training. The resulting $\Delta$AUC values are therefore out-of-sample quantities, and all downstream statistics (means, confidence intervals, regressions) operate on held-out performance without circularity.
 
-The twenty-eight experiments span four categories:
+The twenty-eight core experiments plus a boundary experiment span five categories:
 
 **Estimation (11 experiments).** A (normalization), A2 (multi-algorithm normalization), A3 (scaler comparison), D (test contamination), E (outlier removal), F (feature encoding), T (binning), Q (vocabulary), CE (chained estimation), AB (PCA), AF (calibration).
 
 **Selection (9 experiments).** B (peeking at k = 1–19), K (algorithm baseline), P (grouped splits), BB (early stopping), AI (seed inflation, best-of-10), AQ (screen inflation at K = 1–11), AC (target encoding, categorical datasets only), AN (n-scaling across 6 subsample sizes, N = 493), AP (seed stability dose-response at K = 5–100, N = `{python} c("seed_dose_n")`).
 
 **Memorization (3 experiments).** G (oversampling), H (duplicates at 5–30%), BA (SMOTE vs random oversampling).
+
+**Boundary (1 experiment).** Temporal boundary experiment across 129 datasets (92 FOREX null control, 14 genuine temporal, 23 spurious).
 
 **Null and diagnostic (5 experiments).** J (compound), L (CV variance), AK (stack meta-leakage), AE (seed noise floor), AO (CV coverage gap: nominal vs actual CI coverage, N = `{python} c("n_datasets")`).
 
@@ -125,7 +127,7 @@ Experiment AE serves as a placebo control: both pipelines are methodologically c
 
 ### Estimation leakage produces near-zero effects
 
-Nine experiments test estimation leakage across different preprocessing operations. All produce near-zero raw effects.
+Eleven experiments test estimation leakage across different preprocessing operations. Nine representative conditions are reported below; all produce near-zero raw effects.
 
 : Class I estimation leakage results. {#tbl-class1}
 
@@ -338,7 +340,7 @@ The experiments suggest a taxonomy organized by causal mechanism. Classes I–II
      II  dz: screen.dz→0.27 – peek.dz→0.93; AUC: screen.auc→0.013 – seed.auc→0.045
      III dz: dup_nb_05.dz→0.29 – dup_dt_30.dz→1.38; AUC: dup_lr_05.auc→0.001 – dup_dt_30.auc→0.073 -->
 
-: Updated taxonomy organized by causal mechanism. {#tbl-taxonomy tbl-colwidths="[7,12,24,22,10,12,13]"}
+: Updated taxonomy organized by causal mechanism. {#tbl-taxonomy tbl-colwidths="[6,14,26,16,9,12,17]"}
 
 | Class | Name | Mechanism | Experiments | d$_z$ | $\Delta$AUC | n-scaling |
 |:-----:|:------------|:---------------------------|:------------|:--------:|:-----------:|:----------|
@@ -346,7 +348,7 @@ The experiments suggest a taxonomy organized by causal mechanism. Classes I–II
 | II    | Selection   | Label/test info selects model | B, P, K, BB, AI, AQ, AC, AP | 0.27–0.93 | +0.013–0.045 | $\sigma\sqrt{2\ln K}$; decays at large $n$ |
 | III   | Memorization | Training on evaluation data | G, H, BA | 0.29–1.38 | +0.001–0.073 | f(capacity, fraction) |
 | IV    | Boundary    | Partition strategy mismatches deployment boundary | Boundary exp. | — | +0.023$^b$ | f(non-stationarity) |
-| —     | Null        | OOF prevents leakage       | AK       | $\approx 0$ | $\approx 0$ | — |
+| —     | —           | OOF prevents leakage       | AK       | $\approx 0$ | $\approx 0$ | — |
 
 $^b$Mean pure temporal effect across 14 non-FOREX datasets with verified genuine timestamps; d$_z$ not reported (different experimental design from Classes I–III). Near zero on benchmarks without real drift. Domain-dependent, not universal (@sec-boundary).
 
@@ -373,11 +375,12 @@ Every selection mechanism decomposes into two components: $\Delta = \Delta_{\tex
 
 The seed experiment provides a direct empirical estimate of the noise component, because seed inflation has zero diversity (all seeds estimate the same true AUC): $\hat{\sigma} = \Delta_{\text{seed}} / g(K_{\text{seed}})$. Subtracting the noise prediction from the peeking effect yields the diversity component at each sample size:
 
-| $n$ | Peeking $\Delta$ | Seed $\Delta$ | Noise fraction | Diversity fraction | $N_{\text{datasets}}$ |
-|:---:|:---:|:---:|:---:|:---:|:---:|
 <!-- Decomposition table: Peeking/Seed deltas from v3_an.jsonl (mean ΔAUC at each n-level).
      Noise fraction = seed_delta / peeking_delta. N_datasets = intersection set at each tier.
      50K/100K from exp_an_100k.py results. -->
+
+| $n$ | Peeking $\Delta$ | Seed $\Delta$ | Noise fraction | Diversity fraction | $N_{\text{datasets}}$ |
+|:---:|:---:|:---:|:---:|:---:|:---:|
 | 50 | 0.126 | 0.152 | 95% | 5% | 232 |
 | 200 | 0.074 | 0.094 | 100% | 0% | 239 |
 | 1,000 | 0.050 | 0.059 | 94% | 6% | 239 |
@@ -386,6 +389,7 @@ The seed experiment provides a direct empirical estimate of the noise component,
 | 10,000 | 0.039 | 0.005 | 10% | 90% | 152 |
 | 50,000 | 0.037 | 0.004 | 9% | 91% | 94 |
 | 100,000 | 0.035 | 0.003 | 8% | 92% | 94 |
+: Noise/diversity decomposition. {tbl-colwidths="[13,14,14,16,16,14]"}
 
 At the corpus median ($n \approx 1{,}900$), peeking is approximately 90% noise exploitation — real selection bias that inflates the reported score beyond the true generalization performance. At $n = 100{,}000$ (94 datasets), the noise has fully decayed to 8% and the residual $\Delta \approx 0.035$ reflects genuine algorithm diversity: random forest truly outperforms logistic regression on these datasets, and that gap does not shrink with sample size. The diversity component is not leakage — it is what model selection is for.
 
@@ -416,6 +420,7 @@ I scanned 1,853 cached OpenML datasets for temporal columns, identified 129 with
 | FOREX (null control) | 92 | $-0.006$ | 42% |
 | Non-FOREX with genuine timestamps | 14 | $+0.023$ | 57% |
 | Non-FOREX with spurious time columns | 23 | $+0.002$ | — |
+: Boundary experiment results. {tbl-colwidths="[40,10,25,25]"}
 
 The FOREX null confirms the instrument: random and walk-forward evaluation agree on efficient market data. The 14 genuine temporal datasets show a mean pure temporal effect of +0.023, driven by domains with real concept drift: credit card fraud (+0.12 on 20K subsample, +0.013 on full 284K after size control), electricity market (+0.03), drug directory (+0.03), road safety (+0.02).<!-- Individual boundary effects from v3_boundary_full.jsonl per-dataset rows --> The spurious time columns (+0.002) confirm that the heuristic correctly separates real temporal structure from column-name artifacts.
 
@@ -482,7 +487,7 @@ The capacity ordering NB $<$ LR $<$ XGB $<$ RF $<$ KNN $<$ DT for memorization l
 
 ### Implications for tooling design
 
-The taxonomy has a direct engineering implication. A workflow API that structurally prevents Class II (selection) and Class III (memorization) leakage, not by documentation but by making the incorrect workflow inexpressible, would eliminate the leakage types that actually matter. Class I errors are also rejected on principle, even though their measured effect is negligible. The API would enforce four structural constraints: assess once per holdout (preventing selection pressure on test data), prepare after split and per fold (preventing preprocessing leakage), type-safe transitions (preventing skipped or misordered steps), and rejection of unregistered data at fit time (preventing untagged data from bypassing the grammar). I develop this argument and present a formal grammar for ML workflows — typed partitions, once-only assessment gates, and per-fold preparation scoping — in a companion paper [@roth2026grammar].
+The taxonomy has a direct engineering implication. A workflow API that structurally prevents Class II (selection) and Class III (memorization) leakage, not by documentation but by making the incorrect workflow inexpressible, would eliminate the leakage types that actually matter. Class I errors would also be rejected on principle, even though their measured effect is negligible. The API would enforce four structural constraints: assess once per holdout (preventing selection pressure on test data), prepare after split and per fold (preventing preprocessing leakage), type-safe transitions (preventing skipped or misordered steps), and rejection of unregistered data at fit time (preventing untagged data from bypassing the grammar). I develop this argument and present a formal grammar for ML workflows — typed partitions, once-only assessment gates, and per-fold preparation scoping — in a companion paper [@roth2026grammar].
 
 ### Limitations
 
@@ -496,9 +501,9 @@ This study has several limitations:
 
 4. **N-scaling design.** The AN peeking sub-experiment uses a multi-algorithm leaky path vs single-algorithm clean path, so its absolute inflation is not directly comparable to Experiment B. AN measures how leakage scales with sample size; Experiment B (d$_z$ = `{python} c("peek.dz", ".2")`) measures the effect size itself.
 
-5. **sklearn-only implementation.** All experiments use scikit-learn. Different framework implementations may produce slightly different magnitudes, though the causal mechanisms are framework-independent.
+5. **sklearn-only implementation.** All experiments use scikit-learn. Different frameworks may produce slightly different magnitudes; causal mechanisms are framework-independent.
 
-6. **Scope beyond iid.** The core 30 experiments assume iid tabular data. The Class IV boundary experiment (@sec-boundary) tests temporal leakage on 129 datasets, but group leakage (patient-level contamination across folds) is tested on only one dataset due to public benchmarks stripping ID columns. Informative missingness and domain-knowledge feature leakage are outside scope. The landscape may differ substantially in clinical, temporal, or high-stakes contexts, and the practical recommendation to deprioritize estimation leakage should not be applied without domain-specific validation.
+6. **Scope beyond iid.** The core experiments assume iid tabular data. The boundary experiment tests temporal leakage on 129 datasets, but group leakage is tested on only one dataset. Informative missingness and domain-knowledge feature leakage are outside scope. The practical recommendation to deprioritize estimation leakage should not be applied without domain-specific validation in clinical, temporal, or high-stakes contexts.
 
 7. **Power law identification.** The 3-parameter floor model is fit to 6 data points (3 residual df). Profile likelihood 95% CIs for the floor parameter exclude zero (peeking: [`{python} c("floor.peeking.ci_lo")`, `{python} c("floor.peeking.ci_hi")`]; seed: [`{python} c("floor.seed.ci_lo")`, `{python} c("floor.seed.ci_hi")`]), but the floor estimate should be interpreted as "non-zero" rather than as a precise asymptotic value. The empirical values at $n = 10{,}000$ (+`{python} c("nscale.ext.peeking.10000", ".4")`/+`{python} c("nscale.ext.seed.10000", ".4")`) are consistent with the fitted floors but the claim is bounded to the tested range. A parametric bootstrap (10,000 resamples over datasets) produces 95% CIs of [`{python} c("robust.boot_peeking_ci_lo")`, `{python} c("robust.boot_peeking_ci_hi")`] for peeking and [`{python} c("robust.boot_seed_ci_lo")`, `{python} c("robust.boot_seed_ci_hi")`] for seed, consistent with the profile likelihood intervals and confirming the exclusion of zero. A more parsimonious two-parameter model fixing $b = 0.5$ (from the $O(n^{-1/2})$ rate predicted by CV theory) estimates a lower floor (peeking: `{python} c("robust.floor2_peeking_c")`, seed: `{python} c("robust.floor2_seed_c")`) but still non-zero, supporting the qualitative claim.
 
@@ -519,15 +524,15 @@ The central finding is a categorical distinction between four leakage classes or
 
 **Memorization leakage** — training on duplicated evaluation data — produces effects amplified by model capacity, with a monotonic capacity ordering NB ($d_z =$ `{python} c("dup.nb.dz", ".2")`) $<$ LR $<$ XGB $<$ RF $<$ KNN $<$ DT ($d_z =$ `{python} c("dup.dt.dz", ".2")`) at 10% duplication. SMOTE and random oversampling produce indistinguishable leakage (matched on mean, SD, IQR, skew, and kurtosis; no formal equivalence test).
 
+**Boundary leakage** (Class IV) is invisible under random CV because random folding destroys the structure that would reveal it [@roberts2017cross]. On 14 datasets with verified genuine timestamps, the pure temporal effect (after controlling for training-set size) averages +0.023 AUC; 92 FOREX datasets confirm the null at zero. The effect is domain-dependent: near zero on typical benchmarks, substantial where real concept drift exists.
+
 **Cross-validation standard errors** underestimate true uncertainty by approximately `{python} f"{0.95 / _CLAIMS['cv_cov']['grand_mean']:.1f}"` $\times$, achieving `{python} c("cv_cov.grand_mean", "%")` actual coverage at nominal 95% confidence.
 
 A Bayesian hierarchical meta-regression (12,103 observations) confirms that between-experiment variance exceeds between-dataset variance by `{python} c("meta.tau_ratio")`$\times$: the leakage mechanism matters more than dataset characteristics. All moderators (sample size, feature count, class imbalance) classify as null after hierarchical correction.
 
-**Boundary leakage** (Class IV) is invisible under random CV because random folding destroys the structure that would reveal it [@roberts2017cross]. On 14 datasets with verified genuine timestamps, the pure temporal effect (after controlling for training-set size) averages +0.023 AUC; 92 FOREX datasets confirm the null at zero. The effect is domain-dependent: near zero on typical benchmarks, substantial where real concept drift exists.
-
 Two additional findings extend the picture further. First, feature selection leakage scales with dimensionality: negligible at typical $p/n$ ratios, but +0.018 mean at $p/n > 0.1$, confirming @ambroise2002selection at scale. Second, metric selection flips model rankings on 31% of datasets — the researcher who reports the most flattering metric is making a selection decision as real as peeking at the test set.
 
-If these magnitude rankings generalize beyond tabular binary classification — an open question, since the 648 leakage-affected papers (as of mid-2024) catalogued by @kapoor2025living span genomics, neuroscience, economics, and 27 other fields — the priority implication is: fix selection leakage first (universal at practical $n$), audit for boundary effects in temporal or high-dimensional domains second, audit for memorization leakage in high-capacity models third, and stop worrying about estimation leakage. The researcher who normalizes before splitting has committed a textbook sin that costs on average nothing. The researcher who peeks at the test set has no honest assessment left — every decision built on that score is built on sand.
+If these magnitude rankings generalize beyond tabular binary classification — an open question, since the 648 leakage-affected papers (as of mid-2024) catalogued by @kapoor2025living span genomics, neuroscience, economics, and 27 other fields — the priority implication is: fix selection leakage first (universal at practical $n$), audit for boundary effects in temporal or high-dimensional domains second, audit for memorization leakage in high-capacity models third, and deprioritize estimation leakage on iid tabular data (the correct practice should still be followed, but the audit priority belongs elsewhere). The researcher who normalizes before splitting has committed a textbook sin that costs on average nothing. The researcher who peeks at the test set has no honest assessment left — every decision built on that score is built on sand.
 
 
 ## Data and Code Availability
@@ -541,7 +546,7 @@ The author develops the `ml` software package, which implements the grammar desc
 
 ## Acknowledgments {.unnumbered}
 
-This work was conducted independently and received no external funding. I thank the colleagues and peers who provided critical feedback during this process; they will be acknowledged individually upon journal submission, if they choose to be named. Feedback is welcome at simon@epagogy.ai.
+This work was conducted independently and received no external funding. I thank the colleagues and peers who provided critical feedback during this process; they will be acknowledged individually upon journal submission, if they choose to be named. This is ongoing work; feedback is welcome at simon@epagogy.ai.
 
 ## Disclosure {.unnumbered}
 

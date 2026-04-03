@@ -1,0 +1,7 @@
+numpy>=1.24
+scipy>=1.10
+pandas>=2.0
+scikit-learn>=1.4
+openml>=0.14
+xgboost>=2.0
+mlw>=1.0

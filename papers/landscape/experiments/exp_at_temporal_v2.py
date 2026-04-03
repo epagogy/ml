@@ -42,7 +42,7 @@ DESIGN (nested walk-forward):
       between train and test periods. Does NOT vanish with n because the
       bias is systematic (past ≠ future), not just noise.
 
-  SELF-AUDIT CHECKLIST (from 3 failed prior versions):
+  DESIGN NOTES (from 3 failed prior versions):
     [x] No impossible oracle — practitioner never sees test scores for selection
     [x] Inner CV is walk-forward in temporal condition (not shuffled!)
     [x] Outer splits are walk-forward (expanding window, never random)
@@ -83,7 +83,7 @@ from run_v3_experiments import (  # noqa: E402
 # These have a real time column or are inherently ordered by time.
 # PC1-sorted datasets are synthetic temporal (acknowledged proxy).
 
-# SELF-AUDIT: We maintain two tiers of temporal data:
+# NOTE: We maintain two tiers of temporal data:
 #   Tier 1: Genuine temporal (has a date/time column or is intrinsically ordered)
 #   Tier 2: PC1-sorted (covariate shift proxy, NOT true temporal)
 # Both are valuable but results should be reported separately.
@@ -154,7 +154,7 @@ def _sample_rf(rng):
 
 def _sample_xgb(rng):
     """XGBoost — eval_metric in constructor (3.2.0 compat), no use_label_encoder."""
-    # SELF-AUDIT: XGBoost 3.2.0 removed use_label_encoder param.
+    # NOTE: XGBoost 3.2.0 removed use_label_encoder param.
     # eval_metric MUST be in constructor, not fit(). Verified against CLAUDE.md hard-won lessons.
     try:
         from xgboost import XGBClassifier
@@ -196,7 +196,7 @@ MIN_MINORITY_CLASS = 5  # minimum minority class count per fold
 def make_temporal_order_pc1(X, seed=42):
     """Sort rows by first principal component to create synthetic temporal ordering.
 
-    SELF-AUDIT: This is a covariate shift proxy, NOT real temporal structure.
+    NOTE: This is a covariate shift proxy, NOT real temporal structure.
     PC1 sorting creates a smooth gradient in feature space, which mimics
     distribution drift but does NOT capture concept drift (P(y|x) change).
     Results on PC1-sorted data should be labeled 'synthetic temporal'.
@@ -204,10 +204,10 @@ def make_temporal_order_pc1(X, seed=42):
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
 
-    # SELF-AUDIT: nan_to_num BEFORE scaling. StandardScaler on NaN = NaN propagation.
+    # NOTE: nan_to_num BEFORE scaling. StandardScaler on NaN = NaN propagation.
     X_clean = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
 
-    # SELF-AUDIT: Check for constant columns. StandardScaler sets them to 0
+    # NOTE: Check for constant columns. StandardScaler sets them to 0
     # (mean-centered), but PCA on all-zero columns is fine (zero variance = zero loading).
     X_scaled = StandardScaler().fit_transform(X_clean)
 
@@ -231,7 +231,7 @@ def walk_forward_outer_splits(n_total, n_folds=N_OUTER_FOLDS,
       ...
       Fold 4: train=[0, 5*ts), test=[5*ts, 6*ts)
 
-    SELF-AUDIT: This is an expanding window (train always starts at 0).
+    NOTE: This is an expanding window (train always starts at 0).
     Rolling window would discard early data. Expanding is more realistic for
     the practitioner use case (they use ALL available history for backtesting).
     """
@@ -255,7 +255,7 @@ def walk_forward_outer_splits(n_total, n_folds=N_OUTER_FOLDS,
 def walk_forward_inner_splits(n_train, n_folds=N_INNER_FOLDS, min_test=20):
     """Walk-forward splits for inner HP evaluation on train_outer.
 
-    SELF-AUDIT: This is the CRITICAL correctness requirement.
+    NOTE: This is the CRITICAL correctness requirement.
     In the temporal condition, inner CV MUST also be walk-forward.
     If inner CV shuffles, we destroy the temporal structure and the
     inner CV score becomes a biased estimate of future performance
@@ -322,7 +322,7 @@ def run_one_outer_fold(X_train, y_train, X_test, y_test,
     if len(X_train) < MIN_TRAIN_ROWS:
         return None
 
-    # SELF-AUDIT: Check minority class count in train. If too few, stratified
+    # NOTE: Check minority class count in train. If too few, stratified
     # CV will fail or produce degenerate folds.
     train_counts = np.bincount(y_train.astype(int))
     if len(train_counts) < 2 or min(train_counts) < MIN_MINORITY_CLASS:
@@ -330,17 +330,17 @@ def run_one_outer_fold(X_train, y_train, X_test, y_test,
 
     # Build inner CV splits
     if temporal:
-        # SELF-AUDIT: Walk-forward inner splits. The train data is already
+        # NOTE: Walk-forward inner splits. The train data is already
         # temporally ordered (it's a prefix of the temporally-sorted full dataset).
         # So indices [0..n_train) preserve temporal order.
         inner_splits = walk_forward_inner_splits(len(X_train))
         if len(inner_splits) < 2:
             return None
-        # SELF-AUDIT: Verify inner splits respect temporal order.
+        # NOTE: Verify inner splits respect temporal order.
         # Each split: train_inner is a prefix, val_inner is the next segment.
         # This means we never train on "future" data within inner CV. Correct.
     else:
-        # SELF-AUDIT: Shuffled stratified folds for i.i.d. control.
+        # NOTE: Shuffled stratified folds for i.i.d. control.
         # This is the standard practice for cross-sectional data.
         cv = StratifiedKFold(n_splits=N_INNER_FOLDS, shuffle=True,
                              random_state=seed)
@@ -362,7 +362,7 @@ def run_one_outer_fold(X_train, y_train, X_test, y_test,
         configs.append(clf)
 
     # Score each config on inner CV
-    # SELF-AUDIT: For each config, we compute:
+    # NOTE: For each config, we compute:
     #   inner_cv_score: mean AUC across inner CV folds (what practitioner sees)
     #   test_score: AUC on outer test set (what reality delivers)
     # The practitioner picks the config with best inner_cv_score.
@@ -378,7 +378,7 @@ def run_one_outer_fold(X_train, y_train, X_test, y_test,
             for tr_idx, va_idx in inner_splits:
                 clf_inner = clone(clf)
 
-                # SELF-AUDIT: Check both classes in this inner fold.
+                # NOTE: Check both classes in this inner fold.
                 # Walk-forward on small data can produce single-class folds.
                 y_tr_inner = y_train[tr_idx]
                 y_va_inner = y_train[va_idx]
@@ -398,7 +398,7 @@ def run_one_outer_fold(X_train, y_train, X_test, y_test,
             inner_score = float(np.mean(fold_aucs))
 
             # Test score (reality) — refit on ALL train_outer, score test
-            # SELF-AUDIT: We refit on the full train_outer because that's what
+            # NOTE: We refit on the full train_outer because that's what
             # the practitioner does before deployment. They don't deploy one of
             # the inner CV models — they retrain on all available data.
             clf_fresh = clone(clf)
@@ -424,7 +424,7 @@ def run_one_outer_fold(X_train, y_train, X_test, y_test,
     best_cv_idx = int(np.argmax(inner_cv_scores))
 
     # OPTIMISM: what practitioner thinks (inner CV) minus reality (test)
-    # SELF-AUDIT: This is the KEY metric. Positive = overconfident.
+    # NOTE: This is the KEY metric. Positive = overconfident.
     # This is NOT an impossible oracle — the practitioner genuinely selects
     # by inner CV and then inner_cv_scores[best_cv_idx] is what they report
     # to their boss / paper / production system.
@@ -508,7 +508,7 @@ def run_dataset(X, y, name, source, K_budgets=None, seed=SEED,
             fold_results = []
 
             for fold_i, (train_idx, test_idx) in enumerate(outer_folds_temporal):
-                # SELF-AUDIT: train_idx is always [0, cutpoint) and test_idx
+                # NOTE: train_idx is always [0, cutpoint) and test_idx
                 # is [cutpoint, cutpoint+Δ). Because X_ordered is temporally
                 # sorted, this is a genuine walk-forward split. train never
                 # contains future data.
@@ -544,12 +544,12 @@ def run_dataset(X, y, name, source, K_budgets=None, seed=SEED,
 
     # IID CONDITION (control)
 
-    # SELF-AUDIT: Use the ORIGINAL data (not PC1-sorted) with random
+    # NOTE: Use the ORIGINAL data (not PC1-sorted) with random
     # stratified outer folds. This is the i.i.d. baseline where we expect
     # optimism ≈ σ√(2lnK)/√n → vanishes at large n.
     from sklearn.model_selection import StratifiedKFold
 
-    # SELF-AUDIT: Why StratifiedKFold for outer? Because in the i.i.d. setting,
+    # NOTE: Why StratifiedKFold for outer? Because in the i.i.d. setting,
     # there's no temporal structure. Stratification ensures class balance across
     # folds. This is standard practice for cross-sectional data.
     outer_cv = StratifiedKFold(n_splits=N_OUTER_FOLDS, shuffle=True,

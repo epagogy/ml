@@ -20,7 +20,7 @@ DESIGN:
 
   Δ_compound = test_AUC[leaky_pipeline] - test_AUC[honest_pipeline]
 
-SELF-AUDIT CHECKLIST:
+DESIGN NOTES:
   [x] No impossible oracle — both arms are operationally feasible
   [x] Sequential pipeline: tune operates on screen winner, seed on tune winner
   [x] Inner CV uses StratifiedKFold (i.i.d. experiment)
@@ -239,7 +239,7 @@ def run_dataset(X, y, name, source, seed=SEED):
 
     # STEP 2: TUNE — HP search for screen winner
 
-    # SELF-AUDIT (P0 fix): Both arms tune the SAME algorithm with the SAME
+    # NOTE: Both arms tune the SAME algorithm with the SAME
     # HP pool. Only the SELECTION CRITERION differs (CV vs test).
     # Using honest_screen_winner as the algorithm — conservative choice.
     # If we used leaky_screen_winner, the honest arm would be disadvantaged
@@ -269,14 +269,14 @@ def run_dataset(X, y, name, source, seed=SEED):
                 continue
         return cv_scores_list, test_scores_list, orig_indices
 
-    # SELF-AUDIT: SAME configs scored once, selected by different criteria
+    # NOTE: SAME configs scored once, selected by different criteria
     tune_cv, tune_test, tune_orig_idx = _score_configs(tune_configs, "tune")
 
     if len(tune_test) < 3:
         result["v3_status"] = "skip_tune_failed"
         return result
 
-    # SELF-AUDIT (P0-B1 fix): argmax into filtered list, then map back to
+    # NOTE: argmax into filtered list, then map back to
     # original config list via orig_indices. Without this mapping, the wrong
     # classifier is retrieved for the seed step.
     leaky_tune_pos = int(np.argmax(tune_test))
@@ -302,7 +302,7 @@ def run_dataset(X, y, name, source, seed=SEED):
                 clf_s = clone(base_clf)
                 # Set random_state on the estimator (or pipeline's final step)
                 rs = seed_offset + s * 100
-                # SELF-AUDIT (P0 fix): use set_params for reliable seed injection
+                # NOTE: use set_params for reliable seed injection
                 try:
                     if hasattr(clf_s, 'steps'):
                         clf_s.steps[-1][1].set_params(random_state=rs)
@@ -324,7 +324,7 @@ def run_dataset(X, y, name, source, seed=SEED):
                 continue
         return cv_scores_list, test_scores_list
 
-    # SELF-AUDIT (P0 fix): same seed offset for both arms — differ only
+    # NOTE: same seed offset for both arms — differ only
     # in which config they got from the tune step, not in seed draws.
     leaky_seed_cv, leaky_seed_test = _seed_search(leaky_tune_clf, K_SEED, seed)
     honest_seed_cv, honest_seed_test = _seed_search(honest_tune_clf, K_SEED, seed)
