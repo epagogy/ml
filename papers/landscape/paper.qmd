@@ -1,0 +1,555 @@
+---
+title: |
+  Which Leakage Types Matter?\
+  \vspace{0.4em}\large\textnormal{A Quantitative Landscape Across 2,047 Benchmark Datasets}
+author:
+  - name: Simon Roth
+    email: simon@epagogy.ai
+    affiliations:
+      - name: Independent researcher
+keywords: [data leakage, cross-validation, reproducibility, effect size, benchmark, meta-regression]
+date: "2026-04-03"
+date-format: "MMMM D, YYYY"
+format:
+  pdf:
+    pdf-engine: xelatex
+    number-sections: true
+    include-in-header: preamble.tex
+    cite-method: citeproc
+    keep-tex: true
+    latex-auto-install: false
+    documentclass: article
+bibliography: refs.bib
+link-citations: true
+abstract: |
+  Twenty-eight experiments across 2,047 tabular datasets, plus a boundary experiment on 129 temporal datasets, support a four-class taxonomy of data leakage organized by causal mechanism. Class I (estimation leakage --- fitting scalers or encoders on full data) is negligible: nine conditions all produce $|\Delta\text{AUC}| \leq 0.005$. Class II (selection leakage --- peeking, seed cherry-picking, early stopping) is substantial at practical dataset sizes (corpus median $n \approx 1{,}900$): approximately 90% of the measured effect is noise exploitation ($\sigma\sqrt{2\ln K}$) that inflates reported scores. Seed inflation vanishes by $n = 5{,}000$; peeking retains a residual at $n = 100{,}000$ that reflects genuine algorithm diversity, not persistent leakage. Class III (memorization) is amplified by model capacity: six algorithms span $d_z = 0.37$ (NB) to $1.11$ (DT). Class IV (boundary leakage) is invisible under random CV: a boundary experiment across 129 temporal datasets (92 FOREX as null control, 14 with verified genuine timestamps, 23 with spurious time columns) shows that random CV censors structural contamination. The pure temporal effect averages +0.023 on genuine temporal datasets but near zero on benchmarks without real drift. Feature selection leakage is negligible at typical dimensionality but reaches +0.018 mean at high $p/n$ ratios, confirming Ambroise and McLachlan's (2002) finding at scale. Metric selection flips model rankings on 31\% of datasets. Cross-validation confidence intervals achieve only 55\% actual coverage at nominal 95\%. The textbook emphasis is inverted: the leakage type most prominent in standard references (normalization) matters least; selection leakage at practical dataset sizes matters most.
+  <!-- Abstract hardcodes (c() unavailable before import):
+       2,047 = n_datasets; 0.37 = dup.nb.dz; 1.11 = dup.dt.dz; 55% = cv_cov.grand_mean
+       +0.023 = boundary pure temporal mean (v3_boundary_full.jsonl, 14 non-FOREX datasets)
+       -0.006 = FOREX null (v3_boundary_full.jsonl, 92 datasets) -->
+---
+
+```{python}
+#| echo: false
+from claims import c, _CLAIMS
+```
+
+\newpage
+
+## Introduction
+
+@kapoor2023leakage audited the machine learning literature across 17 scientific fields and found 294 published papers whose results were invalidated by data leakage after publication; their living survey now catalogues 648 papers (as of mid-2024) across 30 fields [@kapoor2025living]. Their taxonomy identifies the types of leakage (preprocessing on full data, feature leakage, overlap between training and test sets, temporal contamination) but does not tell us which ones to worry about.
+
+This distinction matters. A leakage type that inflates AUC by 0.001 on average is a theoretical impurity. One that inflates it by +`{python} c("peek.auc", ".3")` in `{python} c("peek.prev", "%")` of datasets is a practical crisis. The appropriate response (how much engineering effort to invest in prevention, which leakage to audit first, what to teach students) depends on magnitude, not merely on existence. To my knowledge, no prior study has measured multiple leakage types at scale on a shared corpus with a unified metric.
+
+I fill this gap with twenty-nine experiments (twenty-eight core plus a boundary experiment on temporal data), each a controlled perturbation of a standard 5-fold cross-validation workflow, run across `{python} c("n_datasets")` binary classification datasets from OpenML, PMLB, and ml. For every dataset and every leakage type, I measure the AUC difference between the leaky procedure and the clean procedure, yielding a quantitative landscape of leakage effects. I embed internal validation (not pre-registered, but built into the design): deterministic hashes split the corpus at both the dataset level (discovery vs. confirmation) and the partition level, with content-addressed tracking throughout. All testable effects replicate on the held-out confirmation split with zero failures.
+
+The central finding is that effect sizes span more than an order of magnitude in raw $\Delta$AUC across leakage types ($< 0.005$ for estimation leakage to $> 0.07$ for memorization leakage at extreme settings), and the variation is predicted almost entirely by causal mechanism. This is not a continuous spectrum. It is a categorical distinction. Three classes emerge from the core experiments; a fourth emerges from a boundary experiment on temporal data:
+
+**Estimation leakage** — fitting a scaler, imputer, PCA, calibrator, or outlier detector on the full dataset rather than on the training fold — produces near-zero AUC inflation. Nine experiments (normalization, PCA, calibration, chained preprocessing, outlier removal, feature encoding, binning) all produce |$\Delta$AUC| < 0.005. The bias is of order O(p/n) and vanishes at practical sample sizes.
+
+**Selection leakage** — using holdout-set performance to guide model selection, hyperparameter tuning, or seed choice across the split boundary — produces $\Delta$AUC = +`{python} c("screen.auc", ".3")` to +`{python} c("seed.auc", ".3")` (d$_z$ = `{python} c("screen.dz", ".2")`–`{python} c("peek.dz", ".2")`). Four distinct mechanisms produce substantial effects at practical dataset sizes: peeking at test-set performance to select from $k$ model configurations ($\Delta$AUC = +`{python} c("peek.auc", ".3")`, d$_z$ = `{python} c("peek.dz", ".2")`, `{python} c("peek.prev", "%")` prevalence), cherry-picking the best random seed ($\Delta$AUC = +`{python} c("seed.auc", ".3")`, d$_z$ = `{python} c("seed.dz", ".2")`, `{python} c("seed.prev", "%")` prevalence), using test data for early stopping ($\Delta$AUC = +`{python} c("early_stop.auc", ".3")`, d$_z$ = `{python} c("early_stop.dz")`, `{python} c("early_stop.prev", "%")` prevalence), and selecting from a screen of algorithms ($\Delta$AUC = +`{python} c("screen.auc", ".3")`, d$_z$ = `{python} c("screen.dz")`). Every selection mechanism decomposes into noise exploitation ($\sigma\sqrt{2\ln K}$, decaying as $1/\sqrt{n}$) and genuine diversity. Seed inflation vanishes by $n = 5{,}000$; peeking retains a diversity residual at $n = 100{,}000$.
+
+**Memorization leakage** — training on exact or near-exact copies of evaluation rows — produces the single largest raw effects but depends on model capacity. Six algorithms span $d_z =$ `{python} c("dup.nb.dz", ".2")` (NB) to `{python} c("dup.dt.dz", ".2")` (DT) at 10% duplication, with a monotonic capacity ordering NB $<$ LR $<$ XGB $<$ RF $<$ KNN $<$ DT driven by each algorithm's ability to memorize individual instances.
+
+**Boundary leakage** — using a partition strategy (random CV) that mismatches the deployment boundary (temporal, group, spatial) — is invisible under the standard protocol because random CV destroys the structure that would reveal it. A boundary experiment across 129 temporal datasets shows the pure temporal effect averages +0.023 AUC on datasets with genuine drift but near zero on benchmarks without real temporal structure. The mechanism is distinct from Classes I–III: it is not parameter averaging, not selection from K alternatives, not data duplication. It is a structural mismatch between what the validation procedure assumes about the data-generating process and what that process actually is.
+
+### Effect size metric and notation
+
+Throughout this paper, I report two complementary metrics: the raw AUC difference ($\Delta$AUC = AUC$_{\text{leaky}}$ − AUC$_{\text{clean}}$) and the standardized paired-difference effect size d$_z$ = $\bar{\Delta}$ / $s_{\Delta}$, where $s_{\Delta}$ is the standard deviation of the within-dataset differences [@lakens2013calculating]. Cohen's d$_z$ can make small absolute effects sound large when between-dataset variance is low, and d$_z$ values are not directly comparable across experiments run on different corpus subsets (the denominator $s_\Delta$ varies with corpus composition). I report both scales so the reader can judge practical significance. For reference, d$_z$ = `{python} c("peek.dz", ".2")` at the corpus median corresponds to $\Delta$AUC $\approx$ `{python} c("peek.auc", ".3")`, four hundredths of an AUC point. Whether this is small or large depends on the decision context: in a Kaggle competition where rank-ordering matters, +0.04 is decisive; in clinical screening or fairness auditing where deployment depends on passing a fixed performance threshold, +0.04 of phantom accuracy can mean deploying a model that does not actually meet the bar.
+
+
+## Related Work
+
+**Leakage taxonomies.** @kapoor2023leakage provide the most thorough recent survey, identifying leakage in 294 papers across medicine, biology, economics, and neuroscience; their living survey [@kapoor2025living] has since grown to 648 papers across 30 fields. Their taxonomy distinguishes preprocessing leakage, feature leakage, overlap leakage, and temporal leakage. Their taxonomy classifies leakage by the point in the pipeline where label information crosses the split boundary (preprocessing stage, feature engineering stage, data overlap). The present taxonomy makes a different cut: by the statistical mechanism that determines the magnitude (estimation, selection, memorization). Both are causal; they answer different questions.
+
+**Individual leakage studies.** Several prior studies measure specific leakage types in isolation. @ambroise2002selection demonstrated that feature selection on the full dataset before cross-validation produces severely biased error estimates in gene expression studies. @guyon2003introduction survey the broader feature selection landscape, noting that wrapper methods are particularly susceptible to selection bias when the evaluation set is reused. @varma2006bias confirmed this for model selection, showing that nested cross-validation is required for unbiased estimation. @vandewiele2021overly showed that SMOTE [@chawla2002smote] applied before splitting inflates AUC on imbalanced datasets. @kaufman2012leakage formalized feature leakage as over-optimistic estimation in clinical prediction. @sasse2025featuretarget provide a comprehensive overview of leakage scenarios in supervised learning, including feature-to-target leakage as a distinct class. @cawley2010overfitting derived the bias from hyperparameter selection on the validation set, showing it scales as $O(\sqrt{\log C / n})$ for $C$ configurations; @bergstra2012random showed that random search is more efficient than grid search, but selection bias from reporting the best configuration applies equally to both; @bischl2023hpo provide a comprehensive survey of hyperparameter optimization, including the interaction between tuning strategy and evaluation bias. @hastie2009elements [Ch. 7] provide the theoretical framework for model assessment versus model selection, from which the estimation leakage bound O(p/n) follows.
+
+Two recent studies come closest to a multi-type comparison. @rosenblatt2024data measure five leakage forms on shared neuroimaging datasets with a unified metric, demonstrating that leakage severity depends on dataset size, but their mechanisms are domain-specific (site correction, family structure) and the corpus is connectome data, not general-purpose tabular data. @becker2025gap test four pipeline-stage leakages across 30 tabular datasets and six algorithms, independently confirming that feature selection and hyperparameter tuning produce larger distortions than preprocessing (consistent with the Class I/II distinction developed here) but do not include memorization or boundary leakage, nor a unified cross-mechanism effect-size metric. To my knowledge, no prior work measures all four mechanism classes in a single controlled experiment on a shared corpus with a unified metric, enabling direct comparison of magnitudes across mechanisms.
+
+**Practitioner guides.** @raschka2020modelevaluation provides a thorough tutorial on model evaluation and selection methodology, covering the statistical foundations of cross-validation, bootstrapping, and nested resampling. @lones2024pitfalls catalogues common ML pitfalls including several leakage-adjacent issues. Both works provide qualitative guidance on leakage avoidance; this study complements them by quantifying which pitfalls matter most.
+
+**Detection and prevention tools.** Since 2024, automated leakage detection has accelerated. @drobnjakovic2025abstract applied abstract interpretation to ML notebook code, tracking partition-membership labels through data-flow operations at 93% precision. @truong2025leakagedetector2 extended LeakageDetector to Jupyter pipelines with LLM-driven corrections. @apicella2025button documented how black-box ML tool usage amplifies leakage risk in transfer learning. @becker2025gap independently confirmed that feature selection causes the strongest distortions, consistent with the Class II findings reported here. These tools detect leakage after the fact; the present study quantifies how much each type matters.
+
+**Adaptive data analysis.** @dwork2015reusable formalized the dangers of reusing holdout data for multiple adaptive decisions, showing that validity degrades with repeated access. Their "reusable holdout" framework — which uses differential-privacy mechanisms to allow controlled repeated access with quantified accuracy guarantees — provides a theoretical foundation for why peeking produces O(1) bias: each adaptive decision using the same evaluation set transfers information from that set into the model, regardless of sample size. The assess-once constraint proposed in the companion grammar [@roth2026grammar] is the zero-reuse limit of this framework ($\epsilon = 0$): rather than permitting controlled repeated access, it permits no reuse within a session, trading the reusable holdout's flexibility for enforceability in a static type system.
+
+**Cross-validation uncertainty.** @arlot2010survey provide the definitive survey of cross-validation procedures. @bengio2004noUnbiased proved that no unbiased estimator of cross-validation variance exists, and @nadeau2003inference proposed a corrected variance estimate accounting for the non-independence of overlapping folds. @dietterich1998approximate compared five statistical tests for algorithm comparison, establishing that paired tests on shared folds are anti-conservative. @bates2024crossvalidation showed that standard k-fold confidence intervals can be arbitrarily wrong in theory. @varoquaux2018crossvalidation demonstrated $\pm 10\%$ error bars at n = 100 in neuroimaging studies. @tsamardinos2018bootstrap proposed bootstrapping out-of-sample predictions as an alternative with improved coverage properties. I measure this coverage gap empirically across 2,047 datasets (Experiment AO).
+
+**Dataset moderators.** @rosenblatt2024data showed that small datasets amplify leakage severity in neuroimaging. My Bayesian meta-regression (@sec-meta-regression) extends this analysis to 2,047 general-purpose datasets.
+
+**Benchmark studies.** OpenML [@vanschoren2014openml] provides a standardized repository of classification datasets used in reproducibility research. I draw `{python} c("n_datasets")` datasets from OpenML, PMLB, and ml, covering binary problems with 100 to `{python} c("corpus.max_n")` rows.
+
+
+## Experimental Design
+
+### Dataset corpus
+
+I collect all binary classification datasets from OpenML with at least 100 rows and at least 2 features, excluding datasets flagged as inactive or duplicate (2,053 datasets), supplemented by 119 curated datasets from PMLB (Penn Machine Learning Benchmarks) and 116 from the ml package. After deduplication by content hash, the corpus contains 2,288 unique datasets, of which 2,047 completed automatic processing successfully (89.5%). The remaining 241 were excluded due to loading errors (118) or filtering criteria (123: too few rows, single class, or excessive dimensionality).
+
+The corpus spans four orders of magnitude in sample size (median $n =$ `{python} c("corpus.median_n")`, max = `{python} c("corpus.max_n")`), two orders of magnitude in feature count (median $p =$ `{python} c("corpus.median_p")`), and diverse data characteristics. The corpus includes `{python} c("corpus.n_large")` datasets with >100K rows; stratified analysis (@sec-capacity) confirms these do not distort key findings.
+
+### Internal validation protocol
+
+Before running experiments, I assign each unique dataset to a *discovery* split or a *confirmation* split via a deterministic hash of the dataset name and source (50/50 allocation, $\approx 1{,}020$ per split). Hypotheses formulated on discovery-split results are tested on confirmation-split results. **This is an internal validation protocol, not a formal pre-registration.** I did not register hypotheses on an external platform (e.g., OSF). I characterize the study as exploratory with built-in internal validation and directional prediction tracking.
+
+For 13 of the 28 experiments, I recorded directional predictions (expected class membership and effect size range) before data collection. The prediction scorecard (@sec-scorecard) reports 10 of 13 confirmed.
+
+### Leakage experiments
+
+The design is a within-subject counterfactual experiment: each dataset and model serves as its own control, and both the clean and leaky outcomes are observed under identical fold assignments, eliminating between-dataset variance from the treatment estimate. A *clean* workflow (methodologically correct) and a *leaky* workflow (containing a single, controlled perturbation) are run on the same data with the same 5-fold stratified cross-validation and the same random seed. The only difference is the leakage perturbation. The effect is the paired AUC difference: $\Delta$AUC = AUC$_{\text{leaky}}$ − AUC$_{\text{clean}}$. Because both potential outcomes are observed for every (dataset, model) pair, each $\Delta$AUC is an individual treatment effect (ITE), not an estimate of an average. Several experiments extend this to factorial designs (e.g., algorithm $\times$ duplication rate in Experiment H) or dose-response curves (e.g., number of seeds $K = 5$–$100$ in Experiment AP, subsample size $n = 50$–$10{,}000$ in Experiment AN). The primary algorithms are logistic regression (LR) and random forest (RF) from scikit-learn [@pedregosa2011sklearn], chosen for their ubiquity and contrasting capacity. Four additional algorithms (NB, XGB, KNN, DT) are tested where algorithm capacity is the variable of interest.
+
+The clean baseline is a correct 5-fold CV workflow, not an oracle; it may itself carry positive selection bias from model selection on the validation folds [@cawley2010overfitting], making the reported Class II $\Delta$AUC values conservative lower bounds relative to a true oracle evaluation. A deeper limitation: random stratified CV itself censors structural contamination. If a dataset contains repeated measures per subject, temporal ordering, or spatial proximity, random folding scatters correlated observations across folds, and the "clean" baseline already benefits from this structural leakage. The measured $\Delta$AUC captures selection bias *on top of* this invisible structural contamination; on datasets with real temporal or group structure, the total leakage prevented by boundary-aware evaluation (e.g., group CV, temporal CV) would be larger — though a boundary experiment on 129 temporal datasets (@sec-boundary) shows the average effect is near zero on typical benchmarks and substantial only where real distribution drift exists. All $\Delta$AUC values measure deviation from this baseline, not from the true generalization error. Critically, all AUC values are computed from out-of-fold predictions: each observation is scored only by a model that never saw it during training. The resulting $\Delta$AUC values are therefore out-of-sample quantities, and all downstream statistics (means, confidence intervals, regressions) operate on held-out performance without circularity.
+
+The twenty-eight core experiments plus a boundary experiment span five categories:
+
+**Estimation (11 experiments).** A (normalization), A2 (multi-algorithm normalization), A3 (scaler comparison), D (test contamination), E (outlier removal), F (feature encoding), T (binning), Q (vocabulary), CE (chained estimation), AB (PCA), AF (calibration).
+
+**Selection (9 experiments).** B (peeking at k = 1–19), K (algorithm baseline), P (grouped splits), BB (early stopping), AI (seed inflation, best-of-10), AQ (screen inflation at K = 1–11), AC (target encoding, categorical datasets only), AN (n-scaling across 6 subsample sizes, N = 493), AP (seed stability dose-response at K = 5–100, N = `{python} c("seed_dose_n")`).
+
+**Memorization (3 experiments).** G (oversampling), H (duplicates at 5–30%), BA (SMOTE vs random oversampling).
+
+**Boundary (1 experiment).** Temporal boundary experiment across 129 datasets (92 FOREX null control, 14 genuine temporal, 23 spurious).
+
+**Null and diagnostic (5 experiments).** J (compound), L (CV variance), AK (stack meta-leakage), AE (seed noise floor), AO (CV coverage gap: nominal vs actual CI coverage, N = `{python} c("n_datasets")`).
+
+### Effect size metric
+
+For each experiment and dataset, I compute the AUC difference: $\Delta$AUC = AUC$_{\text{leaky}}$ − AUC$_{\text{clean}}$. Across datasets, I report d$_z$ = $\bar{\Delta}$ / $s_{\Delta}$ as the standardized paired-difference effect size [@lakens2013calculating], with 95% confidence intervals from a $t$-distribution. I also report raw $\Delta$AUC with confidence intervals for interpretability. Secondary metrics: proportion of datasets with $\Delta$AUC > 0 (prevalence of positive inflation), and median $\Delta$AUC (robustness to outliers). The detection floor at N = `{python} c("n_datasets")` is d$_z$ = 0.057.<!-- detection floor: derived from power analysis at N=n_datasets --> With 30 experiments, multiple testing is a concern. Applying Benjamini-Hochberg false discovery rate (FDR) correction [@benjamini1995controlling] at $\alpha = 0.05$ does not change any conclusion: Class II and III effects have d$_z$ > 0.3 (all $p < 10^{-8}$), surviving any reasonable correction threshold. The Class I null claims rest on effect sizes below the noise floor, not on $p$-values.
+
+### Measurement noise floor
+
+Experiment AE serves as a placebo control: both pipelines are methodologically clean with different random seeds, so any observed difference is pure measurement noise. Logistic regression is perfectly deterministic (cross-seed SD = 0.000). Random forests show median cross-seed SD = `{python} c("noise_floor.rf_sd_median")`, with a `{python} c("noise_floor.flip_rate", "%1")` winner-flip rate (the probability that a different random seed reverses which algorithm appears better). Any effect with |$\Delta$AUC| < 0.003 or |d$_z$| < 0.06 could be a seed artifact. All results below are interpreted against this floor.
+
+
+## Results
+
+![Distribution of $\Delta$AUC across leakage experiments, grouped by leakage class. Class I (estimation, teal) centers on zero. Class II (selection, red) shows persistent positive inflation. Class III (memorization, blue) leakage varies with model capacity and duplication rate.](figures/fig1_raincloud.pdf){#fig-raincloud width=100%}
+
+### Estimation leakage produces near-zero effects
+
+Eleven experiments test estimation leakage across different preprocessing operations. Nine representative conditions are reported below; all produce near-zero raw effects.
+
+: Class I estimation leakage results. {#tbl-class1}
+
+| Experiment | d$_z$ | $\Delta$AUC | N | Note |
+|:------------------------------|:------:|:------:|:------:|:-----------------|
+| A: Normalization, LR          | `{python} c("norm_lr.dz", ".2")` | `{python} c("norm_lr.auc", ".3")` | `{python} c("norm_lr.n")` | Below noise floor |
+| A: Normalization, RF          | `{python} c("norm_rf.dz", ".2")` | `{python} c("norm_rf.auc", ".3")` | `{python} c("norm_rf.n")` | |
+| E: Outlier removal 10%       | `{python} c("outlier_10.dz", ".2")` | `{python} c("outlier_10.auc", ".3")` | `{python} c("outlier_10.n")` | |
+| E: Outlier removal 30%       | `{python} c("outlier_30.dz", ".2")` | `{python} c("outlier_30.auc", ".3")` | `{python} c("outlier_30.n")` | |
+| F: Feature encoding, LR      | +`{python} c("feat_enc_lr.dz", ".2")` | +`{python} c("feat_enc_lr.auc", ".4")` | `{python} c("feat_enc_lr.n")` | Categorical only |
+| T: Binning, LR                | +`{python} c("binning_lr.dz", ".2")` | +`{python} c("binning_lr.auc", ".4")` | `{python} c("binning_lr.n")` | |
+| CE: Chained pipeline          | `{python} c("chained.dz", ".2")` | `{python} c("chained.auc", ".3")` | `{python} c("chained.n")` | Per-fold slightly *better* |
+| AB: PCA                       | `{python} c("pca.dz", ".2")` | `{python} c("pca.auc", ".3")` | `{python} c("pca.n")` | Below noise floor |
+| AF: Calibration               | `{python} c("calibration.dz", ".2")` | `{python} c("calibration.auc", ".3")` | `{python} c("calibration.n")` | Below noise floor |
+
+On iid tabular benchmarks at typical dataset sizes, fitting a scaler on the full dataset before splitting produces negligible bias due to leakage. The bias is of order O(p/n), which at the corpus median ($p =$ `{python} c("corpus.median_p")`, $n =$ `{python} c("corpus.median_n")`) produces $\sim 0.001$ AUC per feature, below detection threshold.
+
+The chained estimation experiment (CE) deserves special note. I tested a complete pipeline (global scaling + global encoding + global PCA) stacked as a chain of estimation leakages. The result is d$_z$ = `{python} c("chained.dz", ".2")` ($\Delta$AUC = `{python} c("chained.auc", ".3")`): per-fold preprocessing produces slightly *better* estimates than the leaked chain. The direction is counterintuitive but the interpretation is straightforward: estimation on more data (train + test) produces a marginally better scaler, but the clean procedure benefits from adapting the pipeline to each fold's specific data distribution.
+
+### Selection leakage is the dominant effect
+
+Four distinct selection mechanisms produce substantial effects at practical dataset sizes.
+
+#### Peeking at test labels (Exp B)
+
+Peeking leakage — selecting the best of $k$ model configurations by their test-set performance rather than by honest cross-validation — is the most universal effect in the landscape. The pool contains 19 configurations (9 random forests, 5 logistic regressions, 5 decision trees with varying hyperparameters); the leaky workflow picks the best of a random $k$-subset evaluated on the test set, while the clean baseline picks one configuration at random.
+
+| Configurations evaluated ($k$) | d$_z$ | $\Delta$AUC [95% CI] | $P(\Delta > 0)$ |
+|:---:|:---:|:---:|:---:|
+| 1 | `{python} c("peek_k1.dz", ".2")` | `{python} c("peek_k1.auc", ".3")` | `{python} c("peek_k1.prev", ".2")` |
+| 2 | `{python} c("peek_k2.dz", ".2")` | `{python} c("peek_k2.auc", ".3")` | `{python} c("peek_k2.prev", ".2")` |
+| 5 | +`{python} c("peek_k5.dz", ".2")` | +`{python} c("peek_k5.auc", ".3")` | `{python} c("peek_k5.prev", ".2")` |
+| 10 | +`{python} c("peek.dz", ".2")` | +`{python} c("peek.auc", ".3")` | `{python} c("peek.prev", ".2")` |
+| 15 | +`{python} c("peek_k15.dz", ".2")` | +`{python} c("peek_k15.auc", ".3")` | `{python} c("peek_k15.prev", ".2")` |
+| 19 | +`{python} c("peek_k19.dz", ".2")` | +`{python} c("peek_k19.auc", ".3")` | `{python} c("peek_k19.prev", ".2")` |
+
+At $k = 10$, the mean AUC inflation is +`{python} c("peek.auc", ".3")` (d$_z$ = `{python} c("peek.dz", ".2")` [`{python} c("peek.ci_lo", ".2")`, `{python} c("peek.ci_hi", ".2")`]), with positive inflation in `{python} c("peek.prev", "%")` of datasets.
+
+**A non-monotonicity at $k = 1$.** The existing literature on model selection bias treats the inflation as uniformly positive (@ambroise2002selection; @varma2006bias). I find a signed reversal. At $k = 1$, peeking *decreases* performance (d$_z$ = `{python} c("peek_k1.dz", ".2")`, inflation in only `{python} c("peek_k1.prev", "%")` of datasets). At $k = 2$, the effect is near zero (d$_z$ = `{python} c("peek_k2.dz", ".2")`). The proposed mechanism: at $k = 1$, the "best of one" configuration is a single random draw — identical in expectation to the honest baseline, but drawn from a noisier evaluation (single test-set AUC vs cross-validated AUC). The test-set noise deflates performance relative to the more stable baseline. At $k \geq 5$, the order-statistic effect (maximum of $k$ draws) dominates test-set noise, and inflation becomes systematic.
+
+The practical implication: a practitioner who evaluates only a few configurations on the test set may observe no inflation and conclude (incorrectly) the procedure is conservative or safe.
+
+![Peeking inflation distribution across 2,047 datasets at $k = 10$. The distribution is right-skewed with 92% positive prevalence.](figures/fig3_peeking_ridge.pdf){#fig-peeking width=80%}
+
+**Sample size correlation.** The correlation between peeking inflation and $\log(n)$ is $r =$ `{python} c("peek_n_corr")`: near zero. Peeking does not diminish on larger datasets. Stratifying by dataset size confirms this — the peeking effect size remains large and stable across all strata: small datasets (<500 rows) d$_z$ = `{python} c("peek_strat_small.dz", ".2")`, medium (500–5K) d$_z$ = `{python} c("peek_strat_medium.dz", ".2")`, large (5K+) d$_z$ = `{python} c("peek_strat_large.dz", ".2")`. The finding is confirmed on the held-out split: discovery d$_z$ = `{python} c("peek_discovery.dz", ".2")`, confirmation d$_z$ = `{python} c("peek_confirmation.dz", ".2")`.
+
+#### Seed cherry-picking (Exp AI, AP)
+
+Seed inflation (reporting the best AUC across multiple random seeds rather than the mean) produces d$_z$ = +`{python} c("seed.dz", ".2")` (`{python} c("seed.prev", "%")` of datasets affected). The mean AUC inflation from best-of-10 seeds is +`{python} c("seed.auc", ".3")`, comparable in magnitude to peeking.
+
+Experiment AP extends this to a dose-response design across K = 5 to 100 seeds (N = `{python} c("seed_dose_n")` unique datasets):
+
+| K seeds | LR $\Delta$AUC | RF $\Delta$AUC |
+|:---:|:---:|:---:|
+| 5 | `{python} c("seed_dose.5.lr", ".3")` | `{python} c("seed_dose.5.rf", ".3")` |
+| 10 | `{python} c("seed_dose.10.lr", ".3")` | `{python} c("seed_dose.10.rf", ".3")` |
+| 25 | `{python} c("seed_dose.25.lr", ".3")` | `{python} c("seed_dose.25.rf", ".3")` |
+| 50 | `{python} c("seed_dose.50.lr", ".3")` | `{python} c("seed_dose.50.rf", ".3")` |
+| 100 | `{python} c("seed_dose.100.lr", ".3")` | `{python} c("seed_dose.100.rf", ".3")` |
+
+![Seed inflation dose-response: RF inflation grows logarithmically with K seeds while LR remains deterministic at zero.](figures/fig4_seed.pdf){#fig-seed width=70%}
+
+Two observations. First, logistic regression is perfectly deterministic (inflation = 0.000 at all K), as expected from its convex loss surface. The seed effect is entirely an artifact of stochastic selection.
+
+Second, RF seed inflation follows a logarithmic dose-response:
+
+```{=latex}
+\[\Delta\text{AUC}(K) = 0.00455 \cdot \log(K) + 0.00552 \quad (R^2 = 0.994)\]
+```
+
+The regression is fit to 5 dose levels ($K = 5, 10, 25, 50, 100$), each aggregated over `{python} c("seed_dose_n")` datasets. $R^2$ is computed on the 5 aggregated means, not on `{python} c("seed_dose_n")` individual observations. The logarithmic form is predicted by extreme value theory: the expected maximum of K draws from a distribution grows as $O(\log K)$ for exponential-type tails [@gumbel1958statistics]. Extrapolation beyond the tested range ($K = 5$--$100$) is speculative, but the logarithmic trend means the inflation only grows worse. A researcher reporting "best of 100 seeds" is not engaging in harmless hyperparameter tuning — the bias is predictable and monotonic in $K$.
+
+#### Early stopping on test data (Exp BB)
+
+Early stopping (using the test set as the convergence criterion for iterative algorithms) produces d$_z$ = +`{python} c("early_stop.dz", ".2")` (N = `{python} c("early_stop.n")`), with positive inflation in `{python} c("early_stop.prev", "%")` of datasets. Each iteration that observes the test-set loss transfers label information into the model's stopping point.
+
+#### Screen selection (Exp AQ)
+
+Algorithm screening (selecting the best-performing algorithm from a pool) produces d$_z$ = +`{python} c("screen.dz", ".2")` (N = `{python} c("screen.n")`). The screen inflation is K-invariant:
+
+| K algorithms | Mean $\Delta$AUC | d$_z$ |
+|:---:|:---:|:---:|
+| 1 | +`{python} c("screen_k1.auc", ".3")` | +`{python} c("screen_k1.dz", ".2")` |
+| 5 | +`{python} c("screen_k5.auc", ".3")` | +`{python} c("screen_k5.dz", ".2")` |
+| 11 | +`{python} c("screen_k11.auc", ".3")` | +`{python} c("screen_k11.dz", ".2")` |
+
+The bias is constant across K = 1 to 11. The explanation is correlation: all K algorithms are evaluated on the same CV folds — same training rows, same test points. Their errors are highly correlated because they fit the same signal in the same data. When draws are nearly identical, adding more of them barely moves the maximum. This is the opposite of seed inflation (Exp AP), where each seed produces a genuinely different model with only moderate correlation, so the maximum grows logarithmically with K. The K-invariance does not mean screening is harmless — d$_z$ = +`{python} c("screen.dz", ".2")` is real bias from a single reporting decision. And screening rarely happens in isolation: in practice it compounds with tuning, feature selection, and other pipeline choices that each contribute their own selection pressure. It means the bias comes from the single act of evaluating on held-out data and picking the winner, not from the number of candidates in the pool.
+
+#### Target encoding (Exp AC)
+
+Target encoding (computing the target-class mean per category on the full dataset, including test rows) produces d$_z$ = +`{python} c("target_enc.dz", ".2")` on the `{python} c("target_enc.n")` datasets with categorical features (`{python} c("target_enc.prev", "%")` prevalence, $\Delta$AUC = +`{python} c("target_enc.auc", ".3")`).
+
+This is mechanistically distinct from ordinal feature encoding (Exp F: d$_z$ = +`{python} c("feat_enc_lr.dz", ".2")`), which assigns integer codes without using label information. Target encoding uses label information to construct the encoding: each category value becomes its conditional target probability estimated from the full data. The inflation is Class II, not Class I: it behaves like peeking at test labels, not like fitting a scaler.
+
+### Memorization leakage is amplified by memorization capacity
+
+Duplicate leakage (Exp H) produces a clear dose-response with a striking algorithm gap:
+
+| Duplication rate | NB d$_z$ | LR d$_z$ | XGB d$_z$ | RF d$_z$ | KNN d$_z$ | DT d$_z$ |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 5% | +`{python} c("dup_nb_05.dz", ".2")` | +`{python} c("dup_lr_05.dz", ".2")` | +`{python} c("dup_xgb_05.dz", ".2")` | +`{python} c("dup_rf_05.dz", ".2")` | +`{python} c("dup_knn_05.dz", ".2")` | +`{python} c("dup_dt_05.dz", ".2")` |
+| 10% | +`{python} c("dup.nb.dz", ".2")` | +`{python} c("dup.lr.dz", ".2")` | +`{python} c("dup.xgb.dz", ".2")` | +`{python} c("dup.rf.dz", ".2")` | +`{python} c("dup.knn.dz", ".2")` | +`{python} c("dup.dt.dz", ".2")` |
+| 30% | +`{python} c("dup_nb_30.dz", ".2")` | +`{python} c("dup_lr_30.dz", ".2")` | +`{python} c("dup_xgb_30.dz", ".2")` | +`{python} c("dup_rf_30.dz", ".2")` | +`{python} c("dup_knn_30.dz", ".2")` | +`{python} c("dup_dt_30.dz", ".2")` |
+
+: Memorization leakage dose-response across six algorithms, ordered by model capacity ($N$ = `{python} c("dup.lr.n")` for LR/RF; $N$ = `{python} c("dup.knn.n")` for DT/KNN; $N$ = `{python} c("dup.xgb.n")` for XGB/NB). The capacity ordering NB $<$ LR $<$ XGB $<$ RF $<$ KNN $<$ DT is monotonic.
+
+![Capacity amplification. Each line connects six algorithms ordered by capacity (NB → LR → XGB → RF → KNN → DT) at a fixed duplication rate. Higher duplication shifts all algorithms upward (intercept), but the lines also fan out: the gap between constrained (LR) and flexible (DT) models widens from $\Delta$AUC = 0.011 at 5% to 0.064 at 30%<!-- 0.011 = dup_dt_05.auc(0.0118) - dup_lr_05.auc(0.0013); 0.064 = dup_dt_30.auc(0.0731) - dup_lr_30.auc(0.0091) -->, revealing a capacity $\times$ duplication interaction.](figures/fig6_capacity.pdf){#fig-capacity width=60%}
+
+The capacity ordering NB $<$ LR $<$ XGB $<$ RF $<$ KNN $<$ DT is consistent with a general amplification principle: memorization leakage scales with a model's ability to overfit individual training instances. Gaussian Naive Bayes, constrained by its class-conditional independence assumption, shows the smallest effects (d$_z$ = `{python} c("dup.nb.dz", ".2")` at 10%)---even below logistic regression (d$_z$ = `{python} c("dup.lr.dz", ".2")`). XGBoost (d$_z$ = `{python} c("dup.xgb.dz", ".2")`), despite its high predictive capacity, is regularized by default (max\_depth = 6, L2 penalty), limiting memorization. Random forests (d$_z$ = `{python} c("dup.rf.dz", ".2")`) reduce per-tree memorization through bagging. K-nearest neighbors (d$_z$ = `{python} c("dup.knn.dz", ".2")`) memorize through instance storage: duplicated test rows become their own nearest neighbors. Unconstrained decision trees (d$_z$ = `{python} c("dup.dt.dz", ".2")`) achieve the highest memorization by fitting every training instance exactly. The full Class III range across six algorithms is d$_z$ = `{python} c("dup_nb_05.dz", ".2")` (NB, 5%) to `{python} c("dup_dt_30.dz", ".2")` (DT, 30%).
+
+**SMOTE equals random oversampling (Exp BA).** On `{python} c("smote.n")` datasets with class imbalance, SMOTE oversampling before splitting produces d$_z$ = +`{python} c("smote.dz", ".2")`, and random oversampling produces d$_z$ = +`{python} c("random_os.dz", ".2")`. The two methods produce descriptively indistinguishable leakage (mean, SD, IQR, skew, and kurtosis all match; no formal equivalence test was conducted). SMOTE's synthetic interpolation offers no protection against memorization leakage.
+
+### Compound effects are sub-additive
+
+Experiment J stacks four simultaneous leakages: global scaling (estimation), global feature selection using full-data labels (selection), 10% test-row duplication (memorization), and hyperparameter selection on the test set (selection). The compound $\Delta$AUC inflation is d$_z$ = `{python} c("compound.dz", ".2")`. Compound effects are sub-additive in `{python} c("compound.sub_additive_pct", ".1")`% of datasets: the median per-dataset ratio of compound $\Delta$AUC to the sum of individual $\Delta$AUC values is `{python} c("compound.median_ratio")`. The dominant mechanism (selection) sets a ceiling; weaker mechanisms contribute negligibly once selection leakage is present.
+
+**Stack meta-leakage is null (Exp AK).** I predicted that out-of-fold (OOF) stacking would introduce Class II leakage (prediction: d$_z$ > 0.3). The observed effect is d$_z$ = `{python} c("stack.dz", ".2")`, negative, indicating OOF stacking is slightly conservative, not leaky. This is the only failed prediction (@sec-scorecard). The OOF design (where each base model's predictions are generated without seeing the target fold) successfully prevents meta-leakage. The result validates stacking as a safe composition method.
+
+### N-scaling separates Classes I–III
+
+Experiment AN measures the effect size at eight subsample sizes (n = 50, 100, 200, 500, 1,000, 2,000, 5,000, 10,000) across `{python} c("nscale.n_datasets")` datasets. Datasets with $\geq$ 2,000 rows (`{python} c("nscale.n_main")`) are tested at n = 50–2,000; the `{python} c("nscale.ext.n_datasets")` datasets with $\geq$ 10,000 rows are additionally tested at n = 5,000 and 10,000. Only datasets that succeed at all n-levels within each tier are included (intersection set), trading censorship bias for survivorship bias.
+
+| $n$ | I: Estimation | II: Peeking | II: Seed | III: Oversample |
+|---:|:---:|:---:|:---:|:---:|
+| 50 | +`{python} c("nscale.normalize.50", ".3")` | +`{python} c("nscale.peeking.50", ".3")` | +`{python} c("nscale.seed.50", ".3")` | +`{python} c("nscale.oversample.50", ".3")` |
+| 100 | +`{python} c("nscale.normalize.100", ".3")` | +`{python} c("nscale.peeking.100", ".3")` | +`{python} c("nscale.seed.100", ".3")` | +`{python} c("nscale.oversample.100", ".3")` |
+| 200 | +`{python} c("nscale.normalize.200", ".3")` | +`{python} c("nscale.peeking.200", ".3")` | +`{python} c("nscale.seed.200", ".3")` | +`{python} c("nscale.oversample.200", ".3")` |
+| 500 | +`{python} c("nscale.normalize.500", ".3")` | +`{python} c("nscale.peeking.500", ".3")` | +`{python} c("nscale.seed.500", ".3")` | +`{python} c("nscale.oversample.500", ".3")` |
+| 1,000 | +`{python} c("nscale.normalize.1000", ".3")` | +`{python} c("nscale.peeking.1000", ".3")` | +`{python} c("nscale.seed.1000", ".3")` | +`{python} c("nscale.oversample.1000", ".3")` |
+| 2,000 | +`{python} c("nscale.normalize.2000", ".3")` | +`{python} c("nscale.peeking.2000", ".3")` | +`{python} c("nscale.seed.2000", ".3")` | +`{python} c("nscale.oversample.2000", ".3")` |
+| 5,000 | +`{python} c("nscale.ext.normalize.5000", ".4")` | +`{python} c("nscale.ext.peeking.5000", ".3")` | +`{python} c("nscale.ext.seed.5000", ".3")` | +`{python} c("nscale.ext.oversample.5000", ".3")` |
+| 10,000 | +`{python} c("nscale.ext.normalize.10000", ".4")` | +`{python} c("nscale.ext.peeking.10000", ".4")` | +`{python} c("nscale.ext.seed.10000", ".4")` | +`{python} c("nscale.ext.oversample.10000", ".4")` |
+
+: Mean $\Delta$AUC at each subsample size. Rows n = 50–2,000: `{python} c("nscale.n_main")` datasets with $\geq$ 2,000 rows (`{python} c("nscale.n_oversample")` for oversampling). Rows n = 5,000–10,000: `{python} c("nscale.ext.n_datasets")` datasets with $\geq$ 10,000 rows. Class II persists; Class I and III vanish.
+
+![N-scaling separates the leakage classes. (a,b) Class II extends to $n = 10{,}000$: peeking retains a diversity residual; seed decays to near-zero (pure noise exploitation). (c,d) Class I and III shown at $n = 50$–$2{,}000$ only: normalization is already zero by $n = 200$; oversampling declines steeply but extension data is excluded due to survivorship bias ($N$ drops from 149 to 59 in the imbalanced subset). Thin lines = individual datasets; thick line = mean. Shaded band = interquartile range.](figures/fig2_n_scaling.pdf){#fig-nscaling width=100%}
+
+Four distinct regimes emerge:
+
+1. **Class I vanishes.** Normalization leakage is below +0.005 AUC at n = 50 and converges to near zero at n $\geq$ 200. The O(p/n) bias term produces no detectable signal at practical dataset sizes.
+
+2. **Class II persists.** Peeking (model selection on test-set performance) and seed inflation (best-of-10 random seeds) both decay from n = 50 to n $\approx$ 1,000, then level off at a non-zero asymptotic floor. At n = 2,000, peeking is +`{python} c("nscale.peeking.2000", ".3")` and seed is +`{python} c("nscale.seed.2000", ".3")`; at n = 10,000 on `{python} c("nscale.ext.n_datasets")` larger datasets, peeking is +`{python} c("nscale.ext.peeking.10000", ".4")` and seed is +`{python} c("nscale.ext.seed.10000", ".4")`. Neither mechanism self-corrects at large n.
+
+    Both mechanisms share the same mathematical root: selecting the best of $K$ evaluations on the same holdout set. Peeking selects the best of $K$ model configurations; seed inflation selects the best of $K$ random seeds. In both cases, the overshoot scales as $\sigma\sqrt{2\ln K}$ [@gumbel1958statistics]: it depends on the spread of scores ($\sigma$), not on the sample size. More data makes scores more stable (smaller $\sigma$), but it also makes the remaining spread matter more — the search bonus stays a non-trivial fraction of whatever variance is left.
+
+3. **Class III declines steeply.** Oversampling inflation at n = 2,000 (+`{python} c("nscale.oversample.2000", ".3")`) is `{python} f"{_CLAIMS['nscale']['oversample']['50']/_CLAIMS['nscale']['oversample']['2000']:.1f}"` $\times$ smaller than at n = 50 (+`{python} c("nscale.oversample.50", ".3")`). The oversampling procedure is identical at every n: stratified subsampling preserves the class ratio, so the same fraction of synthetic rows is added whether n = 50 or n = 2,000. What changes is how much the model needs them. At small n, the duplicated rows are a substantial fraction of the training signal; at large n, the model already generalizes well from legitimate data, and the leaked rows add little. Extension to n = 5,000–10,000 is not shown: only 59 of the 152 extension datasets have sufficient class imbalance for oversampling, and this survivorship produces a non-comparable pool.
+
+**Implication.** At the corpus median ($n \approx 1{,}900$), peeking inflates by +`{python} c("peek.auc", ".3")` AUC and seed by +`{python} c("seed.auc", ".3")` — both substantial. Seed inflation vanishes by $n = 5{,}000$ (100% noise exploitation); peeking retains a diversity residual at $n = 100{,}000$. A structural constraint that prevents repeated assessment on the same holdout data is necessary at practical dataset sizes and wherever the i.i.d. assumption is violated.
+
+### Cross-validation confidence intervals are miscalibrated
+
+Experiment AO measures the actual coverage of nominal 95% confidence intervals constructed from k-fold cross-validation standard errors (N = up to 1,850 datasets per algorithm, varying by convergence). For each dataset, the ground-truth AUC is estimated from a separate large held-out set (50% of rows, withheld before any CV); coverage is the fraction of datasets whose CV-derived CI contains this held-out estimate.
+
+| Algorithm | z-coverage | t-coverage | N |
+|:---|:---:|:---:|:---:|
+| LR | `{python} c("cv_cov.lr.mean", "%1")` | `{python} c("cv_cov.lr.t_mean", "%1")` | `{python} c("cv_cov.lr.n")` |
+| RF | `{python} c("cv_cov.rf.mean", "%1")` | `{python} c("cv_cov.rf.t_mean", "%1")` | `{python} c("cv_cov.rf.n")` |
+| DT | `{python} c("cv_cov.dt.mean", "%1")` | `{python} c("cv_cov.dt.t_mean", "%1")` | `{python} c("cv_cov.dt.n")` |
+
+![Actual coverage of nominal 95% confidence intervals across three algorithms and six CI construction methods. Dashed line = nominal 95%. All methods fall short; Conservative-Z (M5) performs best.](figures/fig5_cv_coverage.pdf){#fig-coverage width=80%}
+
+A nominal 95% z-based CI achieves only `{python} c("cv_cov.grand_mean", "%")` actual coverage (mean across algorithms). The t-based correction improves coverage to `{python} c("cv_cov.grand_t_mean", "%1")` but still falls far short of nominal. The ordering LR > RF $\approx$ DT is consistent with the theoretical prediction: more flexible models have higher fold-to-fold variance that the standard error formula underestimates more severely.
+
+This result connects directly to @bengio2004noUnbiased's impossibility theorem. The fold-level standard error treats folds as independent, but folds share training data (each point appears in k−1 of k folds). The resulting underestimate of variance produces confidence intervals that are too narrow by a factor of approximately `{python} f"{0.95 / _CLAIMS['cv_cov']['grand_mean']:.1f}"` $\times$.
+
+**Six CI methods compared (Phase 2, N = `{python} c("ci_methods.LR.n")` datasets).** To identify whether better CI construction methods can recover the missing coverage, I evaluated six approaches on two algorithms (LR, DT) with 3 repetitions of 5-fold CV per dataset:
+
+| Method | LR | DT | Description |
+|:---|:---:|:---:|:---|
+| M1: Naive z | `{python} c("ci_methods.LR.coverage.M1")`% | `{python} c("ci_methods.DT.coverage.M1")`% | Standard $z_{0.025}$ on fold SEs |
+| M2: t-corrected | `{python} c("ci_methods.LR.coverage.M2")`% | `{python} c("ci_methods.DT.coverage.M2")`% | $t_{k-1}$ instead of $z$ |
+| M3: Nadeau-Bengio | `{python} c("ci_methods.LR.coverage.M3")`% | `{python} c("ci_methods.DT.coverage.M3")`% | @nadeau2003inference variance correction for overlapping folds |
+| M4: Bootstrap (B=500) | `{python} c("ci_methods.LR.coverage.M4")`% | **`{python} c("ci_methods.DT.coverage.M4")`%** | Full k-fold CV rerun on B bootstrap samples |
+| **M5: Conservative-Z** | **`{python} c("ci_methods.LR.coverage.M5")`%** | **`{python} c("ci_methods.DT.coverage.M5")`%** | Fold SD without $\div\sqrt{k}$ |
+| M6: Corrected Resampled-T | `{python} c("ci_methods.LR.coverage.M6")`% | `{python} c("ci_methods.DT.coverage.M6")`% | NB variance + Bouckaert-Frank $t$ |
+
+: Six CI construction methods compared on LR and DT. {tbl-colwidths="[28,10,10,52]"}
+
+The best method, Conservative-Z (M5), uses the fold standard deviation directly rather than dividing by $\sqrt{k}$. It achieves approximately `{python} c("ci_methods.LR.coverage.M5")`% actual coverage, still below nominal but substantially more honest than the naive default.
+
+Three findings deserve attention. First, **bootstrap is catastrophically anti-conservative for decision trees** (`{python} c("ci_methods.DT.coverage.M4")`% coverage). The instability of trees means that resampling produces high-variance models whose fold-level CIs are far too narrow. Second, M3 and M6 produce identical coverage: both use the same variance estimate with different critical values that happen to cancel. Third, M5 achieves near-equal coverage for both stable (LR: `{python} c("ci_methods.LR.coverage.M5")`%) and unstable (DT: `{python} c("ci_methods.DT.coverage.M5")`%) algorithms.
+
+### Prediction scorecard {#sec-scorecard}
+
+For 13 experiments, I recorded directional predictions before data collection. Ten are confirmed, two falsified, one qualified:
+
+| ID | Prediction | Evidence | Result |
+|:---|:---|:---|:---:|
+| AB | PCA: Class I, d$_z$ < 0.1 | d$_z$ = +`{python} c("pca.dz", ".2")` | PASS |
+| AF | Calibration: Class I, d$_z$ < 0.15 | d$_z$ = +`{python} c("calibration.dz", ".2")` | PASS |
+| AK | Stack: Class II, d$_z$ > 0.3 | d$_z$ = `{python} c("stack.dz", ".2")` | **FAIL** |
+| AQ | Screen: Class II, d$_z$ = 0.1–0.5 | d$_z$ = +`{python} c("screen.dz", ".2")` | PASS |
+| BA | SMOTE $\approx$ random | diff $\approx$ 0.01 | PASS |
+| AN-1 | Class I $\Delta$AUC $\to$ 0 at large n | +`{python} c("nscale.normalize.2000", ".3")` at n=2000 | PASS |
+| AN-2p | Class II peeking floor > 0 | c = `{python} c("floor.peeking.c")`, 95% CI [`{python} c("floor.peeking.ci_lo")`, `{python} c("floor.peeking.ci_hi")`]. PASS on observable ($c > 0$), but decomposition shows the residual at $n = 10{,}000$ is $\sim\!90\%$ algorithm diversity, not persistent leakage (§ Discussion) | PASS$^*$ |
+| AN-2s | Class II seed floor > 0 | Floor model fit to $n \leq 2{,}000$ passes (CI excludes zero), but empirical values at $n = 5{,}000$ (+`{python} c("nscale.ext.seed.5000", ".4")`) and $n = 10{,}000$ (+`{python} c("nscale.ext.seed.10000", ".4")`) approach zero | FAIL |
+| AP-1 | RF inflation $\sim$ log(K) | R$^2$ > 0.99 | PASS |
+| AP-2 | LR deterministic (sd $\approx$ 0) | sd = 0.000 | PASS |
+| AP-3 | RF inflation > LR inflation | RF > LR at all K | PASS |
+| AO-1 | z-coverage < 80% | `{python} c("cv_cov.grand_mean", "%1")`  (N $\approx$ `{python} c("cv_cov.lr.n")`) | PASS |
+| AO-2 | t-coverage < 90% | `{python} c("cv_cov.grand_t_mean", "%1")` (N $\approx$ `{python} c("cv_cov.lr.n")`) | PASS |
+
+Two falsified predictions are informative. AK (stack meta-leakage): I predicted OOF stacking would leak; it does not — the OOF design prevents the predicted information transfer. AN-2s (seed floor): the floor model fit to $n \leq 2{,}000$ excludes zero, but empirical values at $n \geq 5{,}000$ approach zero — seed inflation is 100% noise exploitation and vanishes at large $n$, unlike peeking which retains a diversity residual. The taxonomy is falsifiable: it makes strong predictions, and when predictions fail, the failures have clear mechanistic explanations.
+
+### Updated taxonomy
+
+The experiments suggest a taxonomy organized by causal mechanism. Classes I–III emerge from the twenty-eight core experiments (random CV on iid benchmarks); Class IV emerges from the boundary experiment on 129 temporal datasets. This classification was developed from the data (not pre-registered) and should be understood as a proposed organizing framework, not a confirmed causal structure:
+
+<!-- Taxonomy table ranges (hardcoded for readability):
+     II  dz: screen.dz→0.27 – peek.dz→0.93; AUC: screen.auc→0.013 – seed.auc→0.045
+     III dz: dup_nb_05.dz→0.29 – dup_dt_30.dz→1.38; AUC: dup_lr_05.auc→0.001 – dup_dt_30.auc→0.073 -->
+
+: Updated taxonomy organized by causal mechanism. {#tbl-taxonomy tbl-colwidths="[6,14,26,16,9,12,17]"}
+
+| Class | Name | Mechanism | Experiments | d$_z$ | $\Delta$AUC | n-scaling |
+|:-----:|:------------|:---------------------------|:------------|:--------:|:-----------:|:----------|
+| I     | Estimation  | Parameter averaging O(p/n) | A, A2, D, E, F, T, Q, CE, AB, AF | $\approx 0$ | $\approx 0$ | Vanishes |
+| II    | Selection   | Label/test info selects model | B, P, K, BB, AI, AQ, AC, AP | 0.27–0.93 | +0.013–0.045 | $\sigma\sqrt{2\ln K}$; decays at large $n$ |
+| III   | Memorization | Training on evaluation data | G, H, BA | 0.29–1.38 | +0.001–0.073 | f(capacity, fraction) |
+| IV    | Boundary    | Partition strategy mismatches deployment boundary | Boundary exp. | — | +0.023$^b$ | f(non-stationarity) |
+| —     | —           | OOF prevents leakage       | AK       | $\approx 0$ | $\approx 0$ | — |
+
+$^b$Mean pure temporal effect across 14 non-FOREX datasets with verified genuine timestamps; d$_z$ not reported (different experimental design from Classes I–III). Near zero on benchmarks without real drift. Domain-dependent, not universal (@sec-boundary).
+
+### Internal Validation
+
+Before analysis, each dataset is assigned by content hash to a *discovery* or *confirmation* split (50/50). All testable effects are confirmed on the held-out confirmation split with zero failures. The strongest effects show near-identical magnitudes across splits: peeking (discovery d$_z$ = `{python} c("peek_discovery.dz", ".2")`, confirmation d$_z$ = `{python} c("peek_confirmation.dz", ".2")`), seed inflation (discovery $\Delta$AUC = `{python} c("seed_discovery.auc", ".3")`, confirmation $\Delta$AUC = `{python} c("seed_confirmation.auc", ".3")`), duplication (discovery d$_z$ = `{python} c("dup_rf_discovery.dz", ".2")`, confirmation d$_z$ = `{python} c("dup_rf_confirmation.dz", ".2")`). The zero-failure rate is itself a finding: these are stable, reproducible phenomena, not artifacts of specific dataset subsets.
+
+
+## Discussion
+
+### A reordering of priorities
+
+Every ML textbook warns: normalize inside the fold. That advice is correct. Nine experiments confirm the magnitude is negligible at typical dataset sizes ($\Delta$AUC < 0.005 in all cases). Scikit-learn Pipelines [@pedregosa2011sklearn] already handle this correctly: a Pipeline with a StandardScaler first step fits on training data only and transforms both splits per fold. The tooling solution for Class I leakage exists and works. The problem is that the pedagogical emphasis on per-fold preprocessing is disproportionate to the risk it mitigates.
+
+The results suggest a different ordering. The leakage types that actually inflate performance estimates are: (1) selection leakage, particularly peeking ($\Delta$AUC = +`{python} c("peek.auc", ".3")`) and seed cherry-picking ($\Delta$AUC = +`{python} c("seed.auc", ".3")`); (2) memorization leakage, particularly in high-capacity models ($\Delta$AUC = +`{python} c("dup_knn_10.auc", ".3")`–`{python} c("dup_rf_10.auc", ".3")` at 10% duplication); and (3) early stopping on test data (d$_z$ = `{python} c("early_stop.dz", ".2")`). Practitioners should audit for these first.
+
+These measured effects are lower bounds. The experiments use random stratified CV, which assumes exchangeability across rows. Datasets with group structure (repeated measures per subject), temporal ordering, or spatial proximity violate this assumption. @roberts2017cross showed that random CV cannot detect overfitting to non-causal structural predictors in such settings; @valavi2019blockcv quantified up to +0.16 AUC overestimation from random vs. spatial block CV. I frame this more sharply: random CV does not merely *underestimate* generalization error — it *censors the evidence* of structural contamination by destroying the partition structure that would reveal it. The "clean" baseline in every random-CV experiment has already absorbed this invisible leakage, and the measured $\Delta$AUC captures selection bias on top of an already-contaminated baseline. This connects to @bates2024crossvalidation's finding that CV estimates the error of the *training procedure* (training on $n - n/k$ samples), not the error of the final model — the structural censoring argument adds a second mismatch: the partition strategy (random rotation) versus the deployment boundary (temporal, group, spatial). These are not selection effects; they are boundary effects that the present experiments cannot detect by design.
+
+### Selection leakage decomposes into noise exploitation and genuine diversity
+
+Selection leakage via model-selection peeking is the most universal threat in the landscape at practical dataset sizes (d$_z$ = `{python} c("peek.dz", ".2")`, $\Delta$AUC = +`{python} c("peek.auc", ".3")`, `{python} c("peek.prev", "%")` prevalence). It is also the hardest to detect. The non-monotonicity at $k = 1$ (where peeking *hurts*) means a practitioner who evaluates only a few configurations on the test set may observe no inflation and conclude the procedure is safe.
+
+Every selection mechanism decomposes into two components: $\Delta = \Delta_{\text{diversity}} + \Delta_{\text{noise}}$, where the diversity term reflects genuine performance differences across the selection pool and the noise term reflects exploitation of estimation variance. The noise term follows $\sigma\sqrt{2 \ln K}$ from extreme value theory, where $\sigma \sim 1/\sqrt{n}$ is the standard error of the AUC estimate.
+
+The seed experiment provides a direct empirical estimate of the noise component, because seed inflation has zero diversity (all seeds estimate the same true AUC): $\hat{\sigma} = \Delta_{\text{seed}} / g(K_{\text{seed}})$. Subtracting the noise prediction from the peeking effect yields the diversity component at each sample size:
+
+<!-- Decomposition table: Peeking/Seed deltas from v3_an.jsonl (mean ΔAUC at each n-level).
+     Noise fraction = seed_delta / peeking_delta. N_datasets = intersection set at each tier.
+     50K/100K from exp_an_100k.py results. -->
+
+| $n$ | Peeking $\Delta$ | Seed $\Delta$ | Noise fraction | Diversity fraction | $N_{\text{datasets}}$ |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 50 | 0.126 | 0.152 | 95% | 5% | 232 |
+| 200 | 0.074 | 0.094 | 100% | 0% | 239 |
+| 1,000 | 0.050 | 0.059 | 94% | 6% | 239 |
+| 2,000 | 0.053 | 0.059 | 88% | 12% | 239 |
+| 5,000 | 0.036 | 0.007 | 16% | 84% | 151 |
+| 10,000 | 0.039 | 0.005 | 10% | 90% | 152 |
+| 50,000 | 0.037 | 0.004 | 9% | 91% | 94 |
+| 100,000 | 0.035 | 0.003 | 8% | 92% | 94 |
+: Noise/diversity decomposition. {tbl-colwidths="[13,14,14,16,16,14]"}
+
+At the corpus median ($n \approx 1{,}900$), peeking is approximately 90% noise exploitation — real selection bias that inflates the reported score beyond the true generalization performance. At $n = 100{,}000$ (94 datasets), the noise has fully decayed to 8% and the residual $\Delta \approx 0.035$ reflects genuine algorithm diversity: random forest truly outperforms logistic regression on these datasets, and that gap does not shrink with sample size. The diversity component is not leakage — it is what model selection is for.
+
+<!-- Correlations: computed from v3_an.jsonl, per-dataset peeking vs seed ΔAUC at each n. -->
+Supporting evidence: at $n \leq 2{,}000$, peeking and seed are correlated at $r > 0.96$ across datasets (both driven by the same $\sigma$); at $n = 10{,}000$, the correlation collapses to $r = -0.06$ — the noise component that linked them has vanished. The convergence continues smoothly to $n = 100{,}000$, where seed inflation is +0.003 AUC (effectively zero).
+
+Seed inflation at the corpus median ($\Delta$AUC = +`{python} c("seed.auc", ".3")`, d$_z$ = `{python} c("seed.dz", ".2")`) is as large as peeking but decays to +`{python} c("nscale.ext.seed.10000", ".4")` at $n = 10{,}000$. This confirms the first-principles prediction: seed inflation is 100% noise exploitation with zero diversity (all seeds estimate the same true AUC).
+
+### Seed cherry-picking: pure noise exploitation
+
+Seed inflation receives far less attention than preprocessing leakage, despite being mentioned by @lones2024pitfalls and falling under the broader umbrella of researcher degrees of freedom. The logarithmic dose-response (R$^2$ > 0.99) means cherry-picking scales predictably with effort: a researcher who tries 10 seeds and reports the best inflates by +`{python} c("seed_dose.10.rf", ".3")` AUC on average; 100 seeds inflates by +`{python} c("seed_dose.100.rf", ".3")`. The expected maximum of $K$ draws grows as $\sigma \sqrt{2 \ln K}$ for normal draws or $\sigma \ln K$ for heavier tails [@gumbel1958statistics; @cawley2010overfitting]. The empirical R$^2$ > 0.99 fit to $\log(K)$ is consistent with the Gumbel prediction. In the adaptive data analysis framework of @dwork2015reusable, each seed evaluation is an adaptive query against the holdout.
+
+At the corpus median ($n \approx 1{,}900$), the per-dataset effect of +`{python} c("seed_dose.10.rf", ".3")` AUC from a single reporting decision is real bias. But because seed inflation is 100% noise exploitation (zero diversity — all seeds estimate the same true AUC), it decays as $1/\sqrt{n}$ and effectively vanishes by $n = 5{,}000$. This makes it qualitatively different from peeking, where the diversity component persists.
+
+### Boundary effects: the leakage that random CV hides {#sec-boundary}
+
+The 28 core experiments above all use random stratified cross-validation. This is the standard protocol — and the standard protocol has a blind spot. When data has temporal ordering, group structure, or spatial proximity, random CV scatters correlated observations across folds, and the "clean" baseline absorbs structural contamination silently. The measured selection effects are what remains on top of this already-leaked baseline.
+
+A boundary experiment tests the magnitude directly: for each dataset with a genuine temporal column, compare the AUC from random 5-fold CV against the AUC from walk-forward evaluation respecting the temporal ordering. To separate temporal leakage from the training-set-size confound (walk-forward trains on smaller early folds), I also compute a size-matched random control with the same expanding-window fold sizes but shuffled row order. The pure temporal effect is the gap between the size-matched random and walk-forward evaluations.
+
+I scanned 1,853 cached OpenML datasets for temporal columns, identified 129 with time-related column names, and verified 14 non-financial datasets with genuine timestamps after filtering out false positives (columns named `hours-per-week`, `wage_per_hour`, `time_in_hospital` are durations, not temporal ordering). An additional 92 FOREX currency-pair datasets serve as a null control — efficient market prices have no exploitable temporal structure.
+
+<!-- Boundary table: v3_boundary_full.jsonl. Pure temporal = size_matched_auc - walkfwd_auc.
+     FOREX: 92 datasets, mean pure_temporal = -0.006. Non-FOREX genuine: 14, mean = +0.023.
+     Spurious: 23 datasets with time-like column names but no real temporal ordering. -->
+| Condition | $N$ | Pure temporal $\Delta$AUC | Positive fraction |
+|:---|:---:|:---:|:---:|
+| FOREX (null control) | 92 | $-0.006$ | 42% |
+| Non-FOREX with genuine timestamps | 14 | $+0.023$ | 57% |
+| Non-FOREX with spurious time columns | 23 | $+0.002$ | — |
+: Boundary experiment results. {tbl-colwidths="[40,10,25,25]"}
+
+The FOREX null confirms the instrument: random and walk-forward evaluation agree on efficient market data. The 14 genuine temporal datasets show a mean pure temporal effect of +0.023, driven by domains with real concept drift: credit card fraud (+0.12 on 20K subsample, +0.013 on full 284K after size control), electricity market (+0.03), drug directory (+0.03), road safety (+0.02).<!-- Individual boundary effects from v3_boundary_full.jsonl per-dataset rows --> The spurious time columns (+0.002) confirm that the heuristic correctly separates real temporal structure from column-name artifacts.
+
+The boundary effect is domain-dependent, not universal. On typical benchmark datasets without temporal structure, random CV is adequate. Where real distribution drift exists — fraud patterns that evolve, sensor responses that degrade, markets that shift regimes — the effect is substantial and invisible under the standard protocol.
+
+<!-- Feature selection: exp_wrapper_leakage results. 72 low-dim datasets (p/n < 0.1), 49 high-dim (p/n > 0.1). -->
+**Feature selection leakage scales with dimensionality.** On datasets where $p < n$ (typical benchmarks), wrapper feature selection before splitting is negligible (+0.001 mean across 72 datasets). On high-dimensional datasets where $p/n > 0.1$ (genomics, proteomics, text), the effect becomes substantial: +0.018 mean across 49 datasets, with individual effects up to +0.10 on datasets with $p \approx n$. This confirms @ambroise2002selection's finding on gene expression data and extends it to a broader corpus.
+
+<!-- Metric flip: exp_metric_flip results. 100 datasets, 6 metrics, LR vs RF. 31% = datasets where winner changes by metric. -->
+**Metric selection flips model rankings.** On 100 datasets, comparing LR and RF across 6 standard metrics (AUC, F1, accuracy, precision, recall, MCC), the choice of metric changes which model wins on 31% of datasets. This is not a pipeline error — it is a decision sensitivity that the practitioner controls, and it operates on the same selection principle as peeking: the researcher who reports the most flattering metric is making a selection decision.
+
+<!-- Group leakage: single dataset (Criteo click prediction), ad_id as group. -->
+**Group leakage.** Click prediction with `ad_id` as group column shows +0.01 AUC (random CV vs GroupKFold). Most public benchmark datasets strip ID columns at upload, limiting the scope of this experiment. Clinical and e-commerce datasets with patient or customer IDs would show larger effects, but these require data use agreements not available for this study.
+
+### Bayesian meta-regression: mechanism matters more than dataset {#sec-meta-regression}
+
+To test whether raw correlations between leakage severity and dataset characteristics (@sec-raw-correlations) survive proper hierarchical modeling, I fit a Bayesian measurement-error meta-regression (PyMC 5.28 with numpyro backend, 4 chains $\times$ 2,000 samples, target_accept = 0.9).
+
+**Model structure.** Three-level hierarchy: leakage class fixed effects ($\alpha_{\text{class}}$), experiment random effects ($u_{\text{exp}}$, non-centered parameterization), and dataset random effects ($u_{\text{ds}}$, cross-experiment). Moderators: z-scored log(n), log(p), and imbalance. Known within-study standard errors ($\text{se}_i$) from paired repetitions. Region of Practical Equivalence (ROPE) $= [-0.02, +0.02]$ AUC for @kruschke2018rejecting classification (effects within this interval are treated as practically null).
+
+**Priors.** $\alpha_{\text{class}} \sim \mathcal{N}(0, 0.1)$; $\beta_{\text{moderator}} \sim \mathcal{N}(0, 0.05)$; $\tau_{\text{exp}}, \tau_{\text{ds}} \sim \text{HalfNormal}(0.05)$; $\sigma_{\text{resid}} \sim \text{HalfNormal}(0.1)$. Priors are weakly informative, centered on the expectation that most leakage effects are small in AUC units. A sensitivity analysis with doubled prior widths produces posterior means within 0.001 AUC of the primary analysis.
+
+**Data.** 12,103 observations across 7 experiments (A: normalization, B$_{k=10}$: peeking, AI: seed inflation, AQ: screen selection, BA: oversampling, BB: early stopping, H$_{10\%}$: duplication) and 2,047 datasets. Each observation is a (dataset, experiment) pair with $\Delta_i$ = mean leaky − mean clean across 5 repetitions, and $\text{se}_i$ from the standard error of paired differences.
+
+**Results:**
+
+| Parameter | Posterior mean | 94% HDI^[94% HDI (highest density interval) is the Bayesian analogue of a frequentist confidence interval, following the default in ArviZ; the 1% difference from a 95% interval is negligible at this sample size.] | ROPE classification |
+|:---|:---:|:---:|:---|
+| $\alpha_{\text{Class I}}$ | `{python} c("meta.alpha_I.mean", ".3")` | [`{python} c("meta.alpha_I.hdi_lo", ".3")`, `{python} c("meta.alpha_I.hdi_hi", ".3")`] | NULL (97% in ROPE) |
+| $\alpha_{\text{Class II}}$ | `{python} c("meta.alpha_II.mean", ".3")` | [`{python} c("meta.alpha_II.hdi_lo", ".3")`, `{python} c("meta.alpha_II.hdi_hi", ".3")`] | Inconclusive (95% in ROPE) |
+| $\alpha_{\text{Class III}}$ | `{python} c("meta.alpha_III.mean", ".3")` | [`{python} c("meta.alpha_III.hdi_lo", ".3")`, `{python} c("meta.alpha_III.hdi_hi", ".3")`] | Inconclusive (31% in ROPE) |
+| $\beta_{\log n}$ | `{python} c("meta.beta_log_n.mean", ".3")` | [`{python} c("meta.beta_log_n.hdi_lo", ".3")`, `{python} c("meta.beta_log_n.hdi_hi", ".3")`] | NULL (100% in ROPE) |
+| $\beta_{\log p}$ | `{python} c("meta.beta_log_p.mean", ".3")` | [`{python} c("meta.beta_log_p.hdi_lo", ".3")`, `{python} c("meta.beta_log_p.hdi_hi", ".3")`] | NULL (100% in ROPE) |
+| $\beta_{\text{imbalance}}$ | `{python} c("meta.beta_imbalance.mean", ".3")` | [`{python} c("meta.beta_imbalance.hdi_lo", ".3")`, `{python} c("meta.beta_imbalance.hdi_hi", ".3")`] | NULL (100% in ROPE) |
+| $\tau_{\text{exp}}$ | `{python} c("meta.tau_exp")` | — | Between-experiment SD |
+| $\tau_{\text{ds}}$ | `{python} c("meta.tau_ds")` | — | Between-dataset SD |
+| $\sigma_{\text{resid}}$ | `{python} c("meta.sigma_resid")` | — | Residual SD |
+
+*All R-hat = 1.0, ESS$_{\text{bulk}}$ > 1,700. 30 divergences (out of 8,000 post-warmup samples, 0.4%). Divergent transitions cluster near the $\tau_{\text{ds}} \to 0$ boundary, consistent with the non-centered parameterization interacting with near-zero between-dataset variance for Class I experiments. Excluding divergent samples does not change posterior means or HDIs. Code and trace available in supplementary materials.*
+
+**Key finding:** The between-experiment variance ($\tau_{\text{exp}}$ = `{python} c("meta.tau_exp")`) exceeds the between-dataset variance ($\tau_{\text{ds}}$ = `{python} c("meta.tau_ds")`) by a factor of `{python} c("meta.tau_ratio")`$\times$. This is consistent with leakage *mechanism* as the dominant moderator of effect size, rather than dataset characteristics. Two caveats: (1) experiment type is partially confounded with algorithm (e.g., DT appears only in Class III experiments), so the variance ratio may partly reflect algorithm differences; and (2) each experiment belongs to exactly one leakage class, so $\tau_{\text{exp}}$ absorbs between-class variance by construction — the ratio confirms that the proposed classification captures real variance, not that the classification itself is uniquely correct.
+
+**Note on the Class II ROPE classification.** The $\alpha_{\text{Class II}}$ intercept classifies as "Inconclusive" because the meta-regression pools heterogeneous Class II experiments (screen selection, peeking, seed inflation, early stopping) into a single class intercept. Partial pooling compresses this intercept toward the grand mean. The individual experiments remain significant (d$_z$ = 0.27–0.93 with $N > 1{,}800$); the "Inconclusive" classification reflects the within-class heterogeneity absorbed by the hierarchical model, not doubt about whether Class II effects exist.
+
+**Why the Bayesian result reverses the raw correlations.** A naive Spearman correlation between $\log(n)$ and leakage severity is negative within individual experiments (e.g., $r =$ `{python} c("moderators.ai.log_n", ".2")` for seed inflation, $p < 0.001$). This looks like evidence that bigger datasets leak less. The pattern is consistent with Simpson's paradox [@simpson1951interpretation]. The proposed explanation: oversampling (Class III) produces the largest effects and disproportionately affects smaller, imbalanced datasets; normalization (Class I) produces near-zero effects across all sizes. Pool them, and "big dataset" becomes a proxy for "not the oversampling experiment." The hierarchical model resolves this by giving each experiment its own intercept. Once conditioned on experiment type, the $\log(n)$ slope collapses to $\beta$ = `{python} c("meta.beta_log_n.mean", ".3")` — firmly null. Within any single experiment, dataset size explains almost nothing.
+
+**Implication:** Leakage severity cannot be predicted from dataset features. There is no "safe zone" where leakage prevention can be relaxed. Prevention must be unconditional: a structural property of the workflow, not a conditional check on dataset characteristics.
+
+#### Raw moderator correlations (non-hierarchical) {#sec-raw-correlations}
+
+For completeness, the raw Spearman rank correlations across all 2,047 datasets:
+
+| Moderator | Oversample | Seed | Screen | Early stop |
+|:---|:---:|:---:|:---:|:---:|
+| p/n ratio | +`{python} c("moderators.ba.p_over_n", ".2")` | +`{python} c("moderators.ai.p_over_n", ".2")` | +`{python} c("moderators.aq.p_over_n", ".2")` | +`{python} c("moderators.bb.p_over_n", ".2")` |
+| log(n) | `{python} c("moderators.ba.log_n", ".2")` | `{python} c("moderators.ai.log_n", ".2")` | `{python} c("moderators.aq.log_n", ".2")` | `{python} c("moderators.bb.log_n", ".2")` |
+| Imbalance | `{python} c("moderators.ba.imbalance", ".2")` | `{python} c("moderators.ai.imbalance", ".2")` | `{python} c("moderators.aq.imbalance", ".2")` | `{python} c("moderators.bb.imbalance", ".2")` |
+
+These correlations correctly describe the marginal association but do not identify causal moderators after conditioning on experiment type. I retain them for comparability with prior work [@rosenblatt2024data], with the caveat that the hierarchical analysis (@sec-meta-regression) is the more useful test.
+
+### The memorization capacity principle {#sec-capacity}
+
+The capacity ordering NB $<$ LR $<$ XGB $<$ RF $<$ KNN $<$ DT for memorization leakage is evidence for a general principle: a model's susceptibility to memorization leakage is a function of its memorization capacity (its ability to overfit individual instances), which is related to but distinct from its predictive capacity. Decision trees (d$_z$ = `{python} c("dup_dt_30.dz", ".2")` at 30%) can perfectly memorize duplicated instances; KNN (d$_z$ = `{python} c("dup_knn_30.dz", ".2")`) stores training instances directly; random forests (d$_z$ = `{python} c("dup_rf_30.dz", ".2")`) average over trees, diluting per-tree memorization; XGBoost (d$_z$ = `{python} c("dup_xgb_30.dz", ".2")`), despite high predictive capacity, is regularized by default (max\_depth = 6, L2 penalty), limiting memorization; logistic regression (d$_z$ = `{python} c("dup_lr_30.dz", ".2")`) has no capacity to memorize individual instances; Gaussian Naive Bayes (d$_z$ = `{python} c("dup_nb_30.dz", ".2")`) is the most constrained by its class-conditional independence assumption. This ordering predicts that neural networks will show effects comparable to or exceeding RF, a testable prediction. The trend toward higher-capacity models simultaneously increases predictive power and vulnerability to memorization leakage.
+
+### Implications for tooling design
+
+The taxonomy has a direct engineering implication. A workflow API that structurally prevents Class II (selection) and Class III (memorization) leakage, not by documentation but by making the incorrect workflow inexpressible, would eliminate the leakage types that actually matter. Class I errors would also be rejected on principle, even though their measured effect is negligible. The API would enforce four structural constraints: assess once per holdout (preventing selection pressure on test data), prepare after split and per fold (preventing preprocessing leakage), type-safe transitions (preventing skipped or misordered steps), and rejection of unregistered data at fit time (preventing untagged data from bypassing the grammar). I develop this argument and present a formal grammar for ML workflows — typed partitions, once-only assessment gates, and per-fold preparation scoping — in a companion paper [@roth2026grammar].
+
+### Limitations
+
+This study has several limitations:
+
+1. **Scope.** I test binary classification with six primary algorithms (NB, LR, XGB, RF, KNN, DT). Multiclass, regression, and additional algorithms (neural networks) are out of scope, though secondary experiments (A2, K, AO) include additional algorithms.
+
+2. **Synthetic leakage.** The experiments inject leakage synthetically via controlled perturbations. This is the right design for comparative magnitude ranking (which types are larger than which), because it isolates each mechanism. However, naturally occurring leakage — AutoML tools that internally reuse holdouts, feature engineering scripts run on the full dataset before the split is defined, leakage inherited from shared benchmarks — may produce different magnitudes due to interactions with dataset-specific structure, larger configuration spaces, and opaque preprocessing chains. The assumption that synthetic treatment injection is representative of natural leakage is not tested in this study.
+
+3. **Internal validation.** The confirmation split is an internal replication procedure. Ten of 13 directional predictions confirmed on the held-out half; the two failures (stack meta-leakage, seed floor) and one qualified result (peeking diversity) are mechanistically informative (@sec-scorecard).
+
+4. **N-scaling design.** The AN peeking sub-experiment uses a multi-algorithm leaky path vs single-algorithm clean path, so its absolute inflation is not directly comparable to Experiment B. AN measures how leakage scales with sample size; Experiment B (d$_z$ = `{python} c("peek.dz", ".2")`) measures the effect size itself.
+
+5. **sklearn-only implementation.** All experiments use scikit-learn. Different frameworks may produce slightly different magnitudes; causal mechanisms are framework-independent.
+
+6. **Scope beyond iid.** The core experiments assume iid tabular data. The boundary experiment tests temporal leakage on 129 datasets, but group leakage is tested on only one dataset. Informative missingness and domain-knowledge feature leakage are outside scope. The practical recommendation to deprioritize estimation leakage should not be applied without domain-specific validation in clinical, temporal, or high-stakes contexts.
+
+7. **Power law identification.** The 3-parameter floor model is fit to 6 data points (3 residual df). Profile likelihood 95% CIs for the floor parameter exclude zero (peeking: [`{python} c("floor.peeking.ci_lo")`, `{python} c("floor.peeking.ci_hi")`]; seed: [`{python} c("floor.seed.ci_lo")`, `{python} c("floor.seed.ci_hi")`]), but the floor estimate should be interpreted as "non-zero" rather than as a precise asymptotic value. The empirical values at $n = 10{,}000$ (+`{python} c("nscale.ext.peeking.10000", ".4")`/+`{python} c("nscale.ext.seed.10000", ".4")`) are consistent with the fitted floors but the claim is bounded to the tested range. A parametric bootstrap (10,000 resamples over datasets) produces 95% CIs of [`{python} c("robust.boot_peeking_ci_lo")`, `{python} c("robust.boot_peeking_ci_hi")`] for peeking and [`{python} c("robust.boot_seed_ci_lo")`, `{python} c("robust.boot_seed_ci_hi")`] for seed, consistent with the profile likelihood intervals and confirming the exclusion of zero. A more parsimonious two-parameter model fixing $b = 0.5$ (from the $O(n^{-1/2})$ rate predicted by CV theory) estimates a lower floor (peeking: `{python} c("robust.floor2_peeking_c")`, seed: `{python} c("robust.floor2_seed_c")`) but still non-zero, supporting the qualitative claim.
+
+8. **N-scaling variance confound.** The decay of raw $\Delta$AUC from $n = 50$ to $n = 2{,}000$ is confounded with decreasing CV variance at larger sample sizes [@varoquaux2018crossvalidation]. However, the standardized effect size $d_z$ remains above `{python} c("robust.dz_nscale_peeking_min")` at all sample sizes tested (range: `{python} c("robust.dz_nscale_peeking_min")`–`{python} c("robust.dz_nscale_peeking_max")` for peeking, `{python} c("robust.dz_nscale_seed_min")`–`{python} c("robust.dz_nscale_seed_max")` for seed), indicating that the leakage effect is real at every $n$ and not an artifact of small-sample variance. The primary evidence for the non-zero floor is the empirical value at $n = 10{,}000$ (where CV variance is negligible), not the curve shape at small $n$. Additionally, the $n = 50$ subsamples are drawn from datasets with $\geq 2{,}000$ rows; natively small datasets may behave differently.
+
+9. **CV coverage aggregation.** The 55% actual coverage at nominal 95% is a grand mean across 1,833 datasets. A size-stratified analysis reveals that the miscalibration is remarkably stable: coverage is `{python} c("robust.cv_cov_by_size.lt200", "%")` for $n < 200$, `{python} c("robust.cv_cov_by_size.200_500", "%")` for $200 \leq n < 500$, `{python} c("robust.cv_cov_by_size.500_1k", "%")` for $500 \leq n < 1{,}000$, `{python} c("robust.cv_cov_by_size.1k_5k", "%")` for $1{,}000 \leq n < 5{,}000$, and `{python} c("robust.cv_cov_by_size.gte5k", "%")` for $n \geq 5{,}000$. This is a structural property of the CV variance estimator, not a small-sample artifact.
+
+
+## Conclusion
+
+Data leakage is widely acknowledged as a threat to machine learning validity, yet to my knowledge no prior study has quantified how much each type of leakage actually costs. I present the first large-scale quantitative landscape, measuring twenty-eight core leakage experiments plus a boundary experiment across `{python} c("n_datasets")` benchmark datasets with internal validation (key effects replicate on the confirmation dataset split and out-of-fold holdout sets) and directional prediction tracking (10/13 confirmed, 2 falsified, 1 qualified; the failures are mechanistically informative).
+
+The central finding is a categorical distinction between four leakage classes organized by causal mechanism:
+
+**Estimation leakage** — the most commonly taught and most commonly worried about — produces near-zero effects at typical dataset sizes on iid tabular data ($\Delta$AUC < 0.005). Nine experiments confirm this. The correct workflow practice (per-fold preprocessing) should still be followed — scikit-learn Pipelines enforce it at zero cost — but the pedagogical emphasis on this error type is disproportionate to its measured effect.
+
+**Selection leakage** — using test-set performance to guide model selection, seed choice, or hyperparameter tuning — produces the dominant effects at practical dataset sizes ($\Delta$AUC = +`{python} c("screen.auc", ".3")` to +`{python} c("seed.auc", ".3")`, d$_z$ = `{python} c("screen.dz", ".2")`–`{python} c("peek.dz", ".2")`). Every selection mechanism decomposes into noise exploitation ($\sigma\sqrt{2\ln K}$, decaying as $1/\sqrt{n}$) and genuine diversity (the true performance spread across the selection pool). At the corpus median ($n \approx 1{,}900$), approximately 90% of the measured effect is noise exploitation — real bias that inflates reported scores. Seed inflation is 100% noise and vanishes by $n = 5{,}000$; peeking retains a residual ($\sim$+0.03 AUC at $n = 100{,}000$) that reflects genuine algorithm diversity, not persistent leakage.
+
+**Memorization leakage** — training on duplicated evaluation data — produces effects amplified by model capacity, with a monotonic capacity ordering NB ($d_z =$ `{python} c("dup.nb.dz", ".2")`) $<$ LR $<$ XGB $<$ RF $<$ KNN $<$ DT ($d_z =$ `{python} c("dup.dt.dz", ".2")`) at 10% duplication. SMOTE and random oversampling produce indistinguishable leakage (matched on mean, SD, IQR, skew, and kurtosis; no formal equivalence test).
+
+**Boundary leakage** (Class IV) is invisible under random CV because random folding destroys the structure that would reveal it [@roberts2017cross]. On 14 datasets with verified genuine timestamps, the pure temporal effect (after controlling for training-set size) averages +0.023 AUC; 92 FOREX datasets confirm the null at zero. The effect is domain-dependent: near zero on typical benchmarks, substantial where real concept drift exists.
+
+**Cross-validation standard errors** underestimate true uncertainty by approximately `{python} f"{0.95 / _CLAIMS['cv_cov']['grand_mean']:.1f}"` $\times$, achieving `{python} c("cv_cov.grand_mean", "%")` actual coverage at nominal 95% confidence.
+
+A Bayesian hierarchical meta-regression (12,103 observations) confirms that between-experiment variance exceeds between-dataset variance by `{python} c("meta.tau_ratio")`$\times$: the leakage mechanism matters more than dataset characteristics. All moderators (sample size, feature count, class imbalance) classify as null after hierarchical correction.
+
+Two additional findings extend the picture further. First, feature selection leakage scales with dimensionality: negligible at typical $p/n$ ratios, but +0.018 mean at $p/n > 0.1$, confirming @ambroise2002selection at scale. Second, metric selection flips model rankings on 31% of datasets — the researcher who reports the most flattering metric is making a selection decision as real as peeking at the test set.
+
+If these magnitude rankings generalize beyond tabular binary classification — an open question, since the 648 leakage-affected papers (as of mid-2024) catalogued by @kapoor2025living span genomics, neuroscience, economics, and 27 other fields — the priority implication is: fix selection leakage first (universal at practical $n$), audit for boundary effects in temporal or high-dimensional domains second, audit for memorization leakage in high-capacity models third, and deprioritize estimation leakage on iid tabular data (the correct practice should still be followed, but the audit priority belongs elsewhere). The researcher who normalizes before splitting has committed a textbook sin that costs on average nothing. The researcher who peeks at the test set has no honest assessment left — every decision built on that score is built on sand.
+
+
+## Data and Code Availability
+
+Experiment runners, figure generation scripts, and the Bayesian meta-regression script are available at [github.com/epagogy/ml](https://github.com/epagogy/ml). Raw JSONL result files and the claims compilation pipeline will be deposited on Zenodo before submission. The analysis is reproducible from raw JSONL to paper figures.
+
+
+## Conflict of Interest {.unnumbered}
+
+The author develops the `ml` software package, which implements the grammar described in the companion paper [@roth2026grammar]. The leakage experiments reported here are independent of that software and use scikit-learn throughout. The dataset corpus includes datasets sourced through ml (< 5% of the 2,047 total); excluding ml-sourced datasets does not change any finding.
+
+## Acknowledgments {.unnumbered}
+
+This work was conducted independently and received no external funding. I thank the colleagues and peers who provided critical feedback during this process; they will be acknowledged individually upon journal submission, if they choose to be named. This is ongoing work; feedback is welcome at simon@epagogy.ai.
+
+## Disclosure {.unnumbered}
+
+Large language models (Claude, Anthropic) were used as principal writing, analysis, and implementation tools during the preparation of this manuscript. All scientific claims, experimental designs, empirical results, and theoretical contributions are my own. I take full responsibility for the content.
+
+## References

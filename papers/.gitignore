@@ -1,0 +1,8 @@
+# Quarto intermediates
+*.tex
+*_files/
+.quarto/
+
+# OS
+.DS_Store
+__pycache__/

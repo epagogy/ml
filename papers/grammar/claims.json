@@ -1,0 +1,32 @@
+{
+  "_meta": {
+    "generator": "compile_claims.py",
+    "source": "../landscape/claims.json",
+    "note": "Auto-generated subset of landscape claims used by grammar paper. Source of truth: ../landscape/claims.json"
+  },
+  "dup": {
+    "dt": {
+      "auc": 0.024,
+      "dz": 1.112
+    },
+    "nb": {
+      "auc": 0.0036,
+      "dz": 0.372
+    }
+  },
+  "n_datasets": 2047,
+  "peek": {
+    "auc": 0.0398,
+    "dz": 0.929
+  },
+  "screen": {
+    "dz": 0.269
+  },
+  "seed": {
+    "dz": 0.885,
+    "prev": 0.918
+  },
+  "stack": {
+    "dz": -0.224
+  }
+}

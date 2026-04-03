@@ -1,0 +1,29 @@
+name: Paper Verification
+
+on:
+  push:
+    branches: [main, papers-v1]
+    paths: ["papers/**"]
+  pull_request:
+    branches: [main]
+    paths: ["papers/**"]
+
+jobs:
+  verify-claims:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install numpy scipy pandas pyarrow matplotlib
+      - name: Compile landscape claims
+        working-directory: papers/landscape
+        run: python compile_claims.py
+      - name: Verify landscape claims from raw data
+        working-directory: papers/landscape
+        run: python verify_from_raw.py
+      - name: Compile grammar claims
+        working-directory: papers/grammar
+        run: python compile_claims.py

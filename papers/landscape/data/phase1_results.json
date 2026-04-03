@@ -1,0 +1,161 @@
+{
+  "summary": {
+    "mean": {
+      "alpha_class[Class I]": -0.002,
+      "alpha_class[Class II]": 0.006,
+      "alpha_class[Class III]": 0.025,
+      "beta[z_log_n]": -0.002,
+      "beta[z_log_p]": 0.003,
+      "beta[z_imbalance]": -0.001,
+      "beta[is_text]": -0.0,
+      "tau_exp": 0.013,
+      "tau_ds": 0.005,
+      "sigma_resid": 0.025
+    },
+    "sd": {
+      "alpha_class[Class I]": 0.008,
+      "alpha_class[Class II]": 0.008,
+      "alpha_class[Class III]": 0.015,
+      "beta[z_log_n]": 0.0,
+      "beta[z_log_p]": 0.0,
+      "beta[z_imbalance]": 0.0,
+      "beta[is_text]": 0.05,
+      "tau_exp": 0.007,
+      "tau_ds": 0.001,
+      "sigma_resid": 0.0
+    },
+    "hdi_3%": {
+      "alpha_class[Class I]": -0.018,
+      "alpha_class[Class II]": -0.01,
+      "alpha_class[Class III]": -0.004,
+      "beta[z_log_n]": -0.003,
+      "beta[z_log_p]": 0.002,
+      "beta[z_imbalance]": -0.001,
+      "beta[is_text]": -0.095,
+      "tau_exp": 0.005,
+      "tau_ds": 0.004,
+      "sigma_resid": 0.024
+    },
+    "hdi_97%": {
+      "alpha_class[Class I]": 0.013,
+      "alpha_class[Class II]": 0.022,
+      "alpha_class[Class III]": 0.053,
+      "beta[z_log_n]": -0.002,
+      "beta[z_log_p]": 0.003,
+      "beta[z_imbalance]": -0.0,
+      "beta[is_text]": 0.09,
+      "tau_exp": 0.026,
+      "tau_ds": 0.006,
+      "sigma_resid": 0.025
+    },
+    "mcse_mean": {
+      "alpha_class[Class I]": 0.0,
+      "alpha_class[Class II]": 0.0,
+      "alpha_class[Class III]": 0.0,
+      "beta[z_log_n]": 0.0,
+      "beta[z_log_p]": 0.0,
+      "beta[z_imbalance]": 0.0,
+      "beta[is_text]": 0.0,
+      "tau_exp": 0.0,
+      "tau_ds": 0.0,
+      "sigma_resid": 0.0
+    },
+    "mcse_sd": {
+      "alpha_class[Class I]": 0.0,
+      "alpha_class[Class II]": 0.0,
+      "alpha_class[Class III]": 0.0,
+      "beta[z_log_n]": 0.0,
+      "beta[z_log_p]": 0.0,
+      "beta[z_imbalance]": 0.0,
+      "beta[is_text]": 0.001,
+      "tau_exp": 0.0,
+      "tau_ds": 0.0,
+      "sigma_resid": 0.0
+    },
+    "ess_bulk": {
+      "alpha_class[Class I]": 2626.0,
+      "alpha_class[Class II]": 2968.0,
+      "alpha_class[Class III]": 4038.0,
+      "beta[z_log_n]": 8365.0,
+      "beta[z_log_p]": 7983.0,
+      "beta[z_imbalance]": 8451.0,
+      "beta[is_text]": 12694.0,
+      "tau_exp": 2153.0,
+      "tau_ds": 1727.0,
+      "sigma_resid": 5204.0
+    },
+    "ess_tail": {
+      "alpha_class[Class I]": 3015.0,
+      "alpha_class[Class II]": 3025.0,
+      "alpha_class[Class III]": 3057.0,
+      "beta[z_log_n]": 6358.0,
+      "beta[z_log_p]": 6533.0,
+      "beta[z_imbalance]": 6553.0,
+      "beta[is_text]": 5441.0,
+      "tau_exp": 2691.0,
+      "tau_ds": 2244.0,
+      "sigma_resid": 5046.0
+    },
+    "r_hat": {
+      "alpha_class[Class I]": 1.0,
+      "alpha_class[Class II]": 1.0,
+      "alpha_class[Class III]": 1.0,
+      "beta[z_log_n]": 1.0,
+      "beta[z_log_p]": 1.0,
+      "beta[z_imbalance]": 1.0,
+      "beta[is_text]": 1.0,
+      "tau_exp": 1.0,
+      "tau_ds": 1.0,
+      "sigma_resid": 1.0
+    }
+  },
+  "alpha_class[Class I]": {
+    "mean": -0.002073893639674247,
+    "std": 0.00814158075844723,
+    "hdi_lo": -0.019438341572797876,
+    "hdi_hi": 0.013997426153363251,
+    "classification": "null (HDI within ROPE; 97% in ROPE)"
+  },
+  "alpha_class[Class II]": {
+    "mean": 0.005983944087168908,
+    "std": 0.008165283276265515,
+    "hdi_lo": -0.010726077155337636,
+    "hdi_hi": 0.02309508824776117,
+    "classification": "inconclusive (95% in ROPE)"
+  },
+  "alpha_class[Class III]": {
+    "mean": 0.024860660950876978,
+    "std": 0.014574078993016342,
+    "hdi_lo": -0.0056111355150077705,
+    "hdi_hi": 0.05521764857770499,
+    "classification": "inconclusive (31% in ROPE)"
+  },
+  "beta[z_log_n]": {
+    "mean": -0.0023989765267808027,
+    "std": 0.0002617983112852406,
+    "hdi_lo": -0.00290161935980214,
+    "hdi_hi": -0.0018859316942705646,
+    "classification": "null (HDI within ROPE; 100% in ROPE)"
+  },
+  "beta[z_log_p]": {
+    "mean": 0.002537769766258537,
+    "std": 0.0002587171842049399,
+    "hdi_lo": 0.0020333155506625446,
+    "hdi_hi": 0.0030544117739567268,
+    "classification": "null (HDI within ROPE; 100% in ROPE)"
+  },
+  "beta[z_imbalance]": {
+    "mean": -0.0006649894488784645,
+    "std": 0.00027055033381813496,
+    "hdi_lo": -0.0011883797983184051,
+    "hdi_hi": -0.00011833935829911647,
+    "classification": "null (HDI within ROPE; 100% in ROPE)"
+  },
+  "beta[is_text]": {
+    "mean": -0.00025971603720997914,
+    "std": 0.049620408799514425,
+    "hdi_lo": -0.09928198162232528,
+    "hdi_hi": 0.09466808651027575,
+    "classification": "inconclusive (31% in ROPE)"
+  }
+}
