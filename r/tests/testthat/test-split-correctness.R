@@ -15,13 +15,13 @@
 #   C5 Determinism — same seed → same split
 #   C6 Temporal ordering — train < valid < test in time
 #   C7 Group integrity — no group in two partitions
-#   Stratification — class ratio preserved per fold
+#   C8 Stratification — class ratio preserved per fold
 #   T  Terminal — test exists and is non-empty for CV
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 #' Compute partition sizes the canonical way: round(n * ratio)
-#' This is the formula both languages (Python, R) must use.
+#' This is the formula all three languages (Python, R, Julia) must use.
 canonical_sizes <- function(n, ratio = c(0.6, 0.2, 0.2)) {
   n_train <- round(n * ratio[1])
   n_valid <- round(n * ratio[2])
@@ -159,9 +159,9 @@ test_that("C7 group integrity — no group leakage across 5 configs", {
   }
 })
 
-# ── Stratification ──────────────────────────────────────────────────────
+# ── C8: Stratification ──────────────────────────────────────────────────────
 
-test_that("stratification — class ratio preserved in holdout", {
+test_that("C8 stratification — class ratio preserved in holdout", {
   for (minority_frac in c(0.5, 0.3, 0.2, 0.1, 0.05)) {
     n <- 1000L
     n_min <- round(n * minority_frac)
@@ -183,7 +183,7 @@ test_that("stratification — class ratio preserved in holdout", {
   }
 })
 
-test_that("stratification — class ratio preserved per CV fold", {
+test_that("C8 stratification — class ratio preserved per CV fold", {
   n <- 500L
   target <- c(rep(1L, 100L), rep(0L, 400L))  # 20% minority
   df <- data.frame(x = rnorm(n), target = target)
@@ -321,7 +321,7 @@ for (k in c(2L, 3L, 5L, 7L, 10L)) {
 
 test_that("partition_sizes match canonical formula across languages", {
   # These values are pinned in Rust (al/core/src/shuffle.rs) and must
-  # match Python (ml.split._ml_partition_sizes).
+  # match Python (ml.split._ml_partition_sizes) and Julia (ML.ml_partition_sizes).
   sizes_100 <- .ml_partition_sizes(100L, c(0.6, 0.2, 0.2))
   expect_equal(sizes_100, c(60L, 20L, 20L))
   sizes_101 <- .ml_partition_sizes(101L, c(0.6, 0.2, 0.2))

@@ -1,14 +1,15 @@
-"""Metamorphic relation tests
+"""Metamorphic relation tests — Chain 18.
+
 Based on Murphy et al. 2008. These tests catch bugs that unit tests structurally
 cannot find, by verifying that algorithm outputs change in EXPECTED WAYS when the
 input is transformed.
 
-MR-1.1  Binary label permutation (swap 0↔1 → predictions swap)
-MR-1.1b Multiclass accuracy invariance (relabeling preserves accuracy)
-MR-1.2  Feature permutation (reordering → same predictions)
-MR-2.1  Uninformative feature (adding noise column shouldn't improve accuracy)
-MR-2.2  Scale invariance for tree-based algorithms
-MR-3.1  Data subset consistency (more data ≥ less data ± epsilon)
+§18.1  MR-1.1  Binary label permutation (swap 0↔1 → predictions swap)
+§18.2  MR-1.1b Multiclass accuracy invariance (relabeling preserves accuracy)
+§18.3  MR-1.2  Feature permutation (reordering → same predictions)
+§18.4  MR-2.1  Uninformative feature (adding noise column shouldn't improve accuracy)
+§18.5  MR-2.2  Scale invariance for tree-based algorithms
+§18.6  MR-3.1  Data subset consistency (more data ≥ less data ± epsilon)
 """
 
 import warnings
@@ -84,7 +85,7 @@ def _fit_predict(train, test_features, target, algorithm, seed=42):
     return preds
 
 
-# ── MR-1.1  Binary label permutation ───────────────────────────────────
+# ── §18.1  MR-1.1  Binary label permutation ───────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _ALL_CLF)
 def test_mr_label_permutation_binary(algorithm):
@@ -121,7 +122,7 @@ def test_mr_label_permutation_binary(algorithm):
     )
 
 
-# ── MR-1.1b Multiclass accuracy invariance ─────────────────────────────
+# ── §18.2  MR-1.1b Multiclass accuracy invariance ─────────────────────────────
 
 @pytest.mark.parametrize("algorithm", [a for a in _ALL_CLF if a not in ["naive_bayes"]])
 def test_mr_multiclass_accuracy_invariance(algorithm):
@@ -152,7 +153,7 @@ def test_mr_multiclass_accuracy_invariance(algorithm):
     )
 
 
-# ── MR-1.2  Feature permutation ────────────────────────────────────────
+# ── §18.3  MR-1.2  Feature permutation ────────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _PERMUTATION_INVARIANT_CLF)
 def test_mr_feature_permutation_clf(algorithm):
@@ -209,7 +210,7 @@ def test_mr_feature_permutation_reg(algorithm):
     )
 
 
-# ── MR-2.1  Uninformative feature ──────────────────────────────────────
+# ── §18.4  MR-2.1  Uninformative feature ──────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _TREE_BASED)
 def test_mr_uninformative_feature_tree(algorithm):
@@ -242,7 +243,7 @@ def test_mr_uninformative_feature_tree(algorithm):
     )
 
 
-# ── MR-2.2  Scale invariance for tree-based ────────────────────────────
+# ── §18.5  MR-2.2  Scale invariance for tree-based ────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _TREE_BASED)
 def test_mr_scale_invariance_tree(algorithm):
@@ -272,7 +273,7 @@ def test_mr_scale_invariance_tree(algorithm):
     )
 
 
-# ── MR-3.1  Data subset consistency ────────────────────────────────────
+# ── §18.6  MR-3.1  Data subset consistency ────────────────────────────────────
 
 def _make_subset_pair_clf(n_small=80, n_large=160, n_test=80, seed=42):
     """Create (train_small, train_large, test) where train_large ⊃ train_small."""

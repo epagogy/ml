@@ -11,61 +11,90 @@ The 8th primitive. split() creates boundaries, cv() creates rotations.
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
 from ._types import ConfigError, CVResult, DataError, SplitResult
 
 
 def cv(
-    s: SplitResult,
+    s: SplitResult | pd.DataFrame,
     *,
+    target: str | None = None,
     folds: int = 5,
     seed: int,
     stratify: bool = True,
 ) -> CVResult:
-    """Create cross-validation folds within a split's dev partition.
+    """Create cross-validation folds from a SplitResult or training DataFrame.
 
-    Takes a SplitResult and creates k-fold rotations within ``.dev``
-    (train + valid). The test partition is preserved for ``assess()``.
+    Two calling conventions:
 
-    This is a second-order primitive: it transforms a partition strategy,
-    not raw data. The provenance chain is preserved — the model trained
-    on these folds shares the same split_id as the test partition.
+    1. From SplitResult — folds rotate within ``.dev`` (train + valid):
+       ``c = ml.cv(s, folds=5, seed=42)``
+
+    2. From DataFrame — folds rotate within the training partition:
+       ``c = ml.cv(s.train, folds=5, seed=42)``
 
     Args:
-        s: SplitResult from ``ml.split()``.
+        s: SplitResult from ``ml.split()``, or a training DataFrame.
+        target: Target column name (required when passing a DataFrame,
+            inferred from SplitResult).
         folds: Number of CV folds (default 5).
         seed: Random seed (keyword-only).
         stratify: Stratify folds by target class (default True).
             Only applies to classification tasks.
 
     Returns:
-        CVResult with ``.folds`` (rotations within dev) and ``.k``.
-        Test stays on the SplitResult — use ``s.test`` for assess().
+        CVResult with ``.folds`` (rotations) and ``.k``.
 
     Raises:
-        ConfigError: If input is not a SplitResult, folds < 2, or
-            no target was set in the original split.
-        DataError: If dev partition is too small for requested folds.
+        ConfigError: If input type is wrong, folds < 2, or target missing.
+        DataError: If data is too small for requested folds.
 
     Example:
         >>> import ml
         >>> data = ml.dataset("titanic")
         >>> s = ml.split(data, "survived", seed=42)
-        >>> c = ml.cv(s, folds=5, seed=42)
+        >>> c = ml.cv(s.train, folds=5, seed=42)
         >>> model = ml.fit(c, "survived", seed=42)
         >>> model.scores_
         {'accuracy_mean': 0.82, 'accuracy_std': 0.03, ...}
         >>> evidence = ml.assess(model, test=s.test)
     """
-    # Validate input type
-    if not isinstance(s, SplitResult):
+    # Accept DataFrame — convert to the internal path
+    if isinstance(s, pd.DataFrame):
+        if target is None:
+            # Try to infer target from split provenance (Bug 4: paper line 157)
+            from ._provenance import _registry
+            target = _registry.get_target(s)
+        if target is None:
+            raise ConfigError(
+                "cv() with a DataFrame requires target=. "
+                "Usage: ml.cv(s.train, target='y', folds=5, seed=42)"
+            )
+        if target not in s.columns:
+            raise ConfigError(
+                f"target='{target}' not found in data columns: {list(s.columns)}"
+            )
+        dev = s
+        target_col = target
+        is_temporal = False
+    elif isinstance(s, SplitResult):
+        if target is not None and hasattr(s, "_target") and s._target != target:
+            raise ConfigError(
+                f"target='{target}' conflicts with SplitResult target '{s._target}'. "
+                "When passing a SplitResult, target is inferred automatically."
+            )
+        dev = s.dev
+        target_col = s._target if hasattr(s, "_target") else target
+        is_temporal = getattr(s, "_temporal", False)
+    else:
         raise ConfigError(
-            f"cv() expects a SplitResult from ml.split(), got {type(s).__name__}. "
-            "Usage: s = ml.split(data, target, seed=42); c = ml.cv(s, folds=5, seed=42)"
+            f"cv() expects a SplitResult or DataFrame, got {type(s).__name__}. "
+            "Usage: ml.cv(s.train, target='y', folds=5, seed=42)"
         )
 
     # Block random folds on temporal data — use cv_temporal() instead
-    if getattr(s, "_temporal", False):
+    if is_temporal:
         raise ConfigError(
             "cv() creates random folds — not valid for temporal data (future leakage). "
             "Use ml.cv_temporal() instead:\n"
@@ -84,11 +113,7 @@ def cv(
     if folds < 2:
         raise ConfigError("folds must be >= 2")
 
-    # Get dev data (train + valid)
-    dev = s.dev
-    target = s._target if hasattr(s, "_target") else None
-
-    if target is None:
+    if target_col is None:
         raise ConfigError(
             "cv() requires a target column. "
             "Split with target: s = ml.split(data, 'target', seed=42)"
@@ -97,17 +122,17 @@ def cv(
     n_rows = len(dev)
     if folds > n_rows:
         raise DataError(
-            f"Cannot create {folds} folds from {n_rows} dev rows. "
+            f"Cannot create {folds} folds from {n_rows} rows. "
             f"Use folds={max(2, n_rows // 2)} or fewer."
         )
 
     # Guard against empty folds from stratified CV: folds must not exceed
     # the minority class count, otherwise round-robin allocation leaves
     # some folds with 0 validation rows.
-    if stratify and target in dev.columns:
+    if stratify and target_col in dev.columns:
         from .split import _detect_task
-        if _detect_task(dev[target]) == "classification":
-            min_class_n = dev[target].value_counts().min()
+        if _detect_task(dev[target_col]) == "classification":
+            min_class_n = dev[target_col].value_counts().min()
             if folds > min_class_n:
                 raise DataError(
                     f"Cannot create {folds} stratified folds: minority class has "
@@ -119,24 +144,24 @@ def cv(
     from .split import _kfold, _stratified_kfold
 
     # Detect task for stratification
-    do_stratify = stratify and target in dev.columns
+    do_stratify = stratify and target_col in dev.columns
     if do_stratify:
         from .split import _detect_task
-        detected_task = _detect_task(dev[target])
+        detected_task = _detect_task(dev[target_col])
         do_stratify = detected_task == "classification"
 
     # Create fold indices
     if do_stratify:
-        fold_list = list(_stratified_kfold(dev[target].values, k=folds, seed=seed))
+        fold_list = list(_stratified_kfold(dev[target_col].values, k=folds, seed=seed))
     else:
         fold_list = list(_kfold(len(dev), k=folds, seed=seed))
 
-    # Build CVResult — folds on dev only, no test (test stays on SplitResult)
+    # Build CVResult
     result = CVResult(
         _data=dev,
         folds=fold_list,
         k=folds,
-        target=target,
+        target=target_col,
     )
 
     return result

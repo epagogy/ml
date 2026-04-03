@@ -1,14 +1,14 @@
-"""Engine × Algorithm benchmark for the ml benchmarks.
+"""Engine × Algorithm Benchmark Suite.
 
 Measures speed, accuracy, memory, and parity across all ml engines (Rust/native/sklearn)
 for 14 algorithms decomposed into 4 primitives (Represent, Objective, Search, Compose).
 
-Feeds algorithm coverage analysis, grammar evidence, and benchmark results.
+Feeds Paper 1 §4 (Algorithm Coverage), Paper 2 §4 (Grammar Evidence), Paper 3 §3 (Benchmarks).
 
 Usage:
     python benchmarks/bench_engines.py                        # tiny+small, all algos
     python benchmarks/bench_engines.py --medium               # +100K rows
-    python benchmarks/bench_engines.py --server                # +1M rows
+    python benchmarks/bench_engines.py --large                # +1M rows
     python benchmarks/bench_engines.py --algorithm knn        # single algo
     python benchmarks/bench_engines.py --seed-instability     # 10-seed sweep
     python benchmarks/bench_engines.py --json --output engines.json
@@ -669,11 +669,11 @@ def print_summary(results: dict[str, Any]) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Engine × Algorithm benchmark (ml benchmarks)"
+        description="Engine × Algorithm Benchmark Suite"
     )
     parser.add_argument("--medium", action="store_true",
                         help="Include medium size (100K rows)")
-    parser.add_argument("--server", action="store_true",
+    parser.add_argument("--large", action="store_true",
                         help="Include large size (1M rows, server only)")
     parser.add_argument("--algorithm", type=str, default=None,
                         help="Benchmark single algorithm (e.g., 'knn')")
@@ -687,9 +687,9 @@ def main():
     args = parser.parse_args()
 
     sizes = ["tiny", "small"]
-    if args.medium or args.server:
+    if args.medium or args.large:
         sizes.append("medium")
-    if args.server:
+    if args.large:
         sizes.append("large")
 
     algorithms = None

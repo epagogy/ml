@@ -26,7 +26,6 @@ import pytest
 
 import ml
 
-
 # ---------------------------------------------------------------------------
 # Helpers — deliberately broken implementations
 # ---------------------------------------------------------------------------
@@ -113,14 +112,12 @@ def _broken_group_leaking(dev, k, group_col, seed):
 # ---------------------------------------------------------------------------
 
 from tests.test_cv_parity import (
-assert_no_valid_overlap,
-assert_complete_coverage,
-assert_no_rows_invented,
-assert_temporal_ordering,
-assert_group_non_overlap,
-assert_stratification_ratio,
+    assert_complete_coverage,
+    assert_group_non_overlap,
+    assert_no_rows_invented,
+    assert_no_valid_overlap,
+    assert_temporal_ordering,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. Overlapping folds — invariant check catches it

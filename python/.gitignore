@@ -15,3 +15,6 @@ catboost_info/
 
 # Hypothesis test database
 .hypothesis/
+
+# Assessment breadcrumbs (per-workspace, not version-controlled)
+.ml_assessed/

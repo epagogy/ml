@@ -1,4 +1,5 @@
-"""Parallelism determinism tests
+"""Parallelism determinism tests — Chain 22.
+
 Rayon (Rust's parallel executor) must produce identical predictions regardless
 of RAYON_NUM_THREADS. This is only guaranteed when seeding is per-tree-index
 (not per-thread), which is how forest.rs implements it.
@@ -6,9 +7,9 @@ of RAYON_NUM_THREADS. This is only guaranteed when seeding is per-tree-index
 Tests run in subprocess isolation because RAYON_NUM_THREADS is read once at
 rayon pool initialization (first use) and cannot be changed mid-process.
 
-Random Forest determinism across thread counts
-Extra Trees determinism across thread counts
-GBT determinism across thread counts
+§22.1  Random Forest determinism across thread counts
+§22.2  Extra Trees determinism across thread counts
+§22.3  GBT determinism across thread counts
 """
 
 import json
@@ -95,7 +96,7 @@ def _get_ml_package_path():
     return str(Path(spec.submodule_search_locations[0]).parent)
 
 
-# ── Random Forest determinism ─────────────────────────────────────────
+# ── §22.1  Random Forest determinism ─────────────────────────────────────────
 
 def test_forest_deterministic_across_threads():
     """Same seed → bitwise identical RF predictions at RAYON_NUM_THREADS=1 vs 4.
@@ -113,7 +114,7 @@ def test_forest_deterministic_across_threads():
     )
 
 
-# ── Extra Trees determinism ────────────────────────────────────────────
+# ── §22.2  Extra Trees determinism ────────────────────────────────────────────
 
 def test_extra_trees_deterministic_across_threads():
     """ExtraTrees predictions are bitwise identical regardless of thread count."""
@@ -126,7 +127,7 @@ def test_extra_trees_deterministic_across_threads():
     )
 
 
-# ── GBT determinism ────────────────────────────────────────────────────
+# ── §22.3  GBT determinism ────────────────────────────────────────────────────
 
 def test_gbt_deterministic_across_threads():
     """GBT predictions are identical regardless of RAYON_NUM_THREADS."""
@@ -143,7 +144,7 @@ def test_gbt_deterministic_across_threads():
     )
 
 
-# ── RF regression determinism ─────────────────────────────────────────
+# ── §22.4  RF regression determinism ─────────────────────────────────────────
 
 def test_forest_reg_deterministic_across_threads():
     """RF regression predictions are identical regardless of thread count."""

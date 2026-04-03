@@ -1,4 +1,4 @@
-"""Tests for ml.blend() — prediction blending."""
+"""Tests for ml.blend() — prediction blending. Chain 3.1."""
 
 import numpy as np
 import pytest
@@ -7,7 +7,7 @@ import ml
 
 
 def test_blend_mean_equal_weights():
-    """Default method is arithmetic mean with equal weights."""
+    """Default method is arithmetic mean with equal weights. Chain 3.1."""
     rng = np.random.RandomState(42)
     p1 = rng.rand(100)
     p2 = rng.rand(100)
@@ -17,7 +17,7 @@ def test_blend_mean_equal_weights():
 
 
 def test_blend_rank_invariant_to_calibration():
-    """Rank blending is invariant to monotone rescaling of predictions."""
+    """Rank blending is invariant to monotone rescaling of predictions. Chain 3.1."""
     rng = np.random.RandomState(42)
     p1 = rng.rand(100)
     # Miscalibrated: same rank order as p1, compressed near 0
@@ -32,7 +32,7 @@ def test_blend_rank_invariant_to_calibration():
 
 
 def test_blend_geometric_log_space():
-    """Geometric mean differs from arithmetic mean for non-uniform distributions."""
+    """Geometric mean differs from arithmetic mean for non-uniform distributions. Chain 3.1."""
     p1 = np.array([0.1, 0.5, 0.9])
     p2 = np.array([0.9, 0.5, 0.1])
     result = ml.blend([p1, p2], method="geometric")
@@ -45,7 +45,7 @@ def test_blend_geometric_log_space():
 
 
 def test_blend_power_1_equals_mean():
-    """power=1 gives the same result as arithmetic mean."""
+    """power=1 gives the same result as arithmetic mean. Chain 3.1."""
     rng = np.random.RandomState(7)
     p1 = rng.rand(50)
     p2 = rng.rand(50)
@@ -56,7 +56,7 @@ def test_blend_power_1_equals_mean():
 
 
 def test_blend_custom_weights():
-    """Custom weights are respected in the blend."""
+    """Custom weights are respected in the blend. Chain 3.1."""
     rng = np.random.RandomState(3)
     p1 = rng.rand(80)
     p2 = rng.rand(80)
@@ -66,7 +66,7 @@ def test_blend_custom_weights():
 
 
 def test_blend_weights_sum_check():
-    """weights that don't sum to 1.0 raise ConfigError."""
+    """weights that don't sum to 1.0 raise ConfigError. Chain 3.1."""
     rng = np.random.RandomState(5)
     p1 = rng.rand(50)
     p2 = rng.rand(50)

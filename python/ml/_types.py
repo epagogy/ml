@@ -208,10 +208,11 @@ class Evidence(dict):
     returns False by design (Codd condition 7).
     """
 
-    def __init__(self, data: dict | None = None, *, task: str = "", time: float | None = None, **kwargs):
+    def __init__(self, data: dict | None = None, *, task: str = "", time: float | None = None, K: int = 0, **kwargs):
         super().__init__(data or {}, **kwargs)
         self._task = task
         self._time = time
+        self._K = K  # number of evaluate() calls before assessment (selection pressure)
         self._source = "Evidence"
 
     def __repr__(self) -> str:
@@ -227,8 +228,13 @@ class Evidence(dict):
         for k, v in self.items():
             label = f"{k}:"
             lines.append(f"{label:<{max_label}}  {v:.4f}")
+        footer_parts = []
+        if self._K > 0:
+            footer_parts.append(f"K={self._K}")
         if self._time is not None:
-            lines.append(f"({self._time:.2f}s)")
+            footer_parts.append(f"{self._time:.2f}s")
+        if footer_parts:
+            lines.append(f"({', '.join(footer_parts)})")
         return "\n".join(lines) + "\n"
 
     def __format__(self, format_spec: str) -> str:
@@ -299,7 +305,7 @@ class Explanation:
         self._df = df
         self._algorithm = algorithm
         self._method = method
-        self.shap_values = shap_values  # per-sample SHAP values (n_samples × n_features)
+        self.shap_values = shap_values  # A7: per-sample SHAP values (n_samples × n_features)
 
     @property
     def method(self) -> str:
@@ -651,8 +657,6 @@ class SplitResult:
         """
         result = pd.concat([self.train, self.valid]).reset_index(drop=True)
         result.attrs["_ml_partition"] = "dev"
-        if self._target is not None:
-            result.attrs["_ml_target"] = self._target
         # Layer 1: Register dev partition in provenance registry
         from ._provenance import get_split_id, register_partition
         train_sid = get_split_id(self.train)
@@ -833,9 +837,6 @@ class Model:
     _seed_std: float | None = None  # std of seed scores (stability diagnostic)
     # A4: threshold optimisation — set by optimize()
     _threshold: float | None = None  # decision threshold; None means use default (0.5)
-    # OOF predictions from CV path
-    cv_predictions_: Any = None     # pd.Series of out-of-fold predictions, None for holdout
-    cv_probabilities_: Any = None   # np.ndarray (n_dev, n_classes) for classification, None otherwise
 
     # Public read-only properties
     @property
@@ -1107,7 +1108,6 @@ class Model:
 
 
 @dataclass
-@dataclass
 class PreparedData:
     """Result of ml.prepare(). Grammar primitive #2: DataFrame -> PreparedData.
 
@@ -1125,6 +1125,7 @@ class PreparedData:
     state: Any
     target: str
     task: str
+    _target_values: pd.Series | None = None
 
 
 @dataclass
@@ -1206,6 +1207,11 @@ class TuningResult:
         if len(self.tuning_history_) > 0 and "score" in self.tuning_history_.columns:
             return float(self.tuning_history_["score"].iloc[0])
         return None
+
+    @property
+    def model(self) -> Model:
+        """Alias for best_model (paper convention: ``tuned.model``)."""
+        return self.best_model
 
     @property
     def best_score_(self) -> float | None:

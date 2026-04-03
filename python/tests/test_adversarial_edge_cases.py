@@ -17,10 +17,11 @@ Results: 11/20 tests pass. 9 failures are either expected guard behaviors
 or test bugs (wrong iris column names). No actual state corruption found.
 """
 
-import tempfile
 import os
-import pandas as pd
+import tempfile
+
 import numpy as np
+import pandas as pd
 import pytest
 
 import ml

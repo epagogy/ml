@@ -1,4 +1,5 @@
-"""Production hardening tests
+"""Production hardening tests — Chain 13.
+
 Covers logging, deprecation, quiet/verbose, check(), py.typed,
 __all__ completeness, Model.cv_score property, and performance benchmarks.
 """

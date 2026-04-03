@@ -121,6 +121,6 @@ ml_report <- function(model, data = NULL, path = "model_report.html") {
   )
 
   writeLines(html, path)
-  message(sprintf("Saved: %s", normalizePath(path)))
+  cat(sprintf("Saved: %s\n", normalizePath(path)))
   invisible(normalizePath(path))
 }

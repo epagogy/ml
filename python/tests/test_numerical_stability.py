@@ -1,7 +1,8 @@
-"""Numerical stability tests
-Noise gradient (classification) — Spearman rho < -0.5 under label flip
-Noise gradient (regression)    — Spearman rho < -0.5 under feature noise
-Extreme values — overflow, near-zero variance, large-scale features
+"""Numerical stability tests — Chain 16.
+
+§16.1  Noise gradient (classification) — Spearman rho < -0.5 under label flip
+§16.2  Noise gradient (regression)    — Spearman rho < -0.5 under feature noise
+§16.3  Extreme values — overflow, near-zero variance, large-scale features
 """
 
 import warnings
@@ -87,7 +88,7 @@ def _r2(model, data):
     return float(1.0 - ss_res / ss_tot)
 
 
-# ── Noise gradient — classification ────────────────────────────────────
+# ── §16.1  Noise gradient — classification ────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _CLF_ALGOS)
 def test_noise_gradient_clf(algorithm):
@@ -136,7 +137,7 @@ def test_noise_gradient_clf(algorithm):
     )
 
 
-# ── Noise gradient — regression ───────────────────────────────────────
+# ── §16.2  Noise gradient — regression ───────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", _REG_ALGOS)
 def test_noise_gradient_reg(algorithm):
@@ -183,7 +184,7 @@ def test_noise_gradient_reg(algorithm):
     )
 
 
-# ── Extreme values ─────────────────────────────────────────────────────
+# ── §16.3  Extreme values ─────────────────────────────────────────────────────
 
 def test_logistic_no_overflow_large_features():
     """Features ~ 1e6 don't cause overflow in sigmoid (clamped internally)."""

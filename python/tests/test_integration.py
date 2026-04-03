@@ -1,4 +1,5 @@
-"""Integration & Polish tests
+"""Integration & Polish tests — Chain 16.
+
 End-to-end tests verifying entire workflows work together.
 """
 

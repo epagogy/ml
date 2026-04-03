@@ -13,12 +13,12 @@ import pandas as pd
 
 from . import _engines, _normalize
 from ._logging import logger
-from ._types import CVResult, DataError, Model
+from ._types import CVResult, DataError, Model, PreparedData
 
 
 def fit(
-    data: pd.DataFrame | CVResult,
-    target: str | None = None,
+    data: pd.DataFrame | CVResult | PreparedData,
+    target: str,
     *,
     algorithm: str = "auto",
     backend=None,
@@ -120,26 +120,48 @@ def fit(
 
     # Auto-convert Polars/other DataFrames to pandas
 
-    # Infer target from CVResult or SplitResult partition when not provided
-    if target is None:
-        if isinstance(data, CVResult) and data.target is not None:
-            target = data.target
-        elif hasattr(data, '_target') and data._target is not None:
-            target = data._target
-        elif isinstance(data, pd.DataFrame) and data.attrs.get("_ml_target") is not None:
-            target = data.attrs["_ml_target"]
-        elif isinstance(data, pd.DataFrame):
+    # Accept SparseFrame — route to fast sparse path or densify
+    from .sparse import SPARSE_ALGORITHMS, SparseFrame
+    if isinstance(data, SparseFrame):
+        # Resolve algorithm early to decide sparse vs dense path
+        from ._engines import ALGORITHM_ALIASES
+        _sf_algo = ALGORITHM_ALIASES.get(algorithm, algorithm)
+        if _sf_algo == "auto":
+            # auto selects boosting/RF → dense anyway, so densify
+            data = data.to_dense()
+        elif _sf_algo in SPARSE_ALGORITHMS and backend is None:
+            # TRUE SPARSE FAST PATH — skip normalize entirely
+            return _fit_sparse(
+                data, target, _sf_algo, seed=seed, task=task,
+                balance=balance, weights=weights, engine=engine,
+                gpu=gpu, **kwargs,
+            )
+        else:
+            data = data.to_dense()
+
+    # Accept PreparedData — extract the pre-transformed DataFrame + state
+    _prepared_state = None
+    if isinstance(data, PreparedData):
+        _prepared_state = data.state
+        if task == "auto":
+            task = data.task
+        if target != data.target:
             from ._types import ConfigError
             raise ConfigError(
-                "target= is required when passing a raw DataFrame. "
-                "Example: ml.fit(data, 'target_col', seed=42)"
+                f"target='{target}' conflicts with PreparedData target '{data.target}'."
             )
+        # Reconstruct full DataFrame (transformed features + target column) for
+        # the holdout path. The state will be reused instead of re-preparing.
+        prepared_df = data.data.copy()
+        if data._target_values is not None:
+            prepared_df[target] = data._target_values.values
+        data = prepared_df
 
     # Validate data type early
     if not isinstance(data, (pd.DataFrame, CVResult)):
         from ._types import ConfigError
         raise ConfigError(
-            f"data= must be a DataFrame or CVResult. Got {type(data).__name__}. "
+            f"data= must be a DataFrame, CVResult, or PreparedData. Got {type(data).__name__}. "
             "Use: ml.fit(data=df, target='col') or ml.fit(data=cv, target='col')."
         )
 
@@ -155,6 +177,15 @@ def fit(
             f"preprocessor= must be callable (X_df → X_df). "
             f"Got {type(preprocessor).__name__}."
         )
+
+    # Disambiguate KNN 'weights' hyperparameter from sample weights column.
+    # tune() returns best_params with weights='uniform'/'distance' for KNN,
+    # which collides with fit(weights=) sample weights parameter.
+    _knn_weights = None
+    _KNN_WEIGHTS_VALUES = {"uniform", "distance"}
+    if isinstance(weights, str) and weights in _KNN_WEIGHTS_VALUES:
+        _knn_weights = weights
+        weights = None
 
     # Validate weights + balance conflict
     if weights is not None and balance:
@@ -185,12 +216,15 @@ def fit(
         return _fit_cv(data, target, algorithm, seed, task, backend=backend,
                        preprocessor=preprocessor, balance=balance, weights=weights,
                        early_stopping=early_stopping, eval_fraction=eval_fraction,
-                       monotone=monotone, gpu=gpu, engine=engine, **kwargs)
+                       monotone=monotone, gpu=gpu, engine=engine,
+                       _knn_weights=_knn_weights, **kwargs)
     else:
         return _fit_holdout(data, target, algorithm, seed, task, backend=backend,
                             preprocessor=preprocessor, balance=balance, weights=weights,
                             early_stopping=early_stopping, eval_fraction=eval_fraction,
-                            monotone=monotone, gpu=gpu, engine=engine, **kwargs)
+                            monotone=monotone, gpu=gpu, engine=engine,
+                            _prepared_state=_prepared_state,
+                            _knn_weights=_knn_weights, **kwargs)
 
 
 def _validate_backend(backend) -> None:
@@ -250,6 +284,8 @@ def _fit_holdout(
     monotone: dict | None = None,
     gpu: bool | str = "auto",
     engine: str = "auto",
+    _prepared_state=None,
+    _knn_weights=None,
     **kwargs,
 ) -> Model:
     """Fit on a single DataFrame (holdout path)."""
@@ -426,13 +462,15 @@ def _fit_holdout(
                 warnings.warn(_auto_warn, UserWarning, stacklevel=3)
         display_name = resolved_algorithm
 
-    # Prepare normalization state
-    norm_state = _normalize.prepare(X, y, algorithm=resolved_algorithm, task=detected_task)
-
-    # Use cached training data from prepare() if available (avoids redundant transform)
-    X_clean = norm_state.pop_train_data()
-    if X_clean is None:
+    # Prepare normalization state — reuse from PreparedData if provided
+    if _prepared_state is not None:
+        norm_state = _prepared_state
         X_clean = norm_state.transform(X)
+    else:
+        norm_state = _normalize.prepare(X, y, algorithm=resolved_algorithm, task=detected_task)
+        X_clean = norm_state.pop_train_data()
+        if X_clean is None:
+            X_clean = norm_state.transform(X)
 
     # Apply custom preprocessor (Hook 4: Lego)
     if preprocessor is not None:
@@ -479,6 +517,10 @@ def _fit_holdout(
             UserWarning,
             stacklevel=3,
         )
+
+    # Re-inject KNN weights hyperparameter into engine kwargs
+    if _knn_weights is not None:
+        kwargs["weights"] = _knn_weights
 
     # Create estimator (only for built-in path)
     if backend is None:
@@ -614,6 +656,145 @@ def _fit_holdout(
     return _model
 
 
+def _fit_sparse(
+    sf,
+    target: str,
+    algorithm: str,
+    *,
+    seed: int,
+    task: str = "auto",
+    balance: bool = False,
+    weights=None,
+    engine: str = "auto",
+    gpu: bool | str = "auto",
+    **kwargs,
+) -> Model:
+    """Fast sparse path — bypasses normalize entirely.
+
+    TF-IDF data is already numeric, L2-normalized, and has no categoricals.
+    We skip: ordinal encoding, one-hot encoding, imputation, scaling,
+    column sanitization, and DataFrame construction.
+
+    Only for sparse-capable algorithms (logistic, linear, elastic_net,
+    naive_bayes, svm). Tree-based algorithms take the dense path.
+    """
+    from .sparse import SparseFrame
+
+    if not isinstance(sf, SparseFrame):
+        raise DataError("_fit_sparse requires SparseFrame")
+
+    if sf.target is None and target is None:
+        raise DataError(
+            "sparse() was called without target=. "
+            "Pass target= to sparse(): ml.sparse(tok, data, target='y')"
+        )
+
+    # Extract target
+    if target in sf.numeric.columns:
+        y = sf.numeric[target]
+    else:
+        raise DataError(
+            f"target column '{target}' not found in SparseFrame. "
+            "Pass target= to sparse(): ml.sparse(tok, data, target='y')"
+        )
+
+    # Detect task
+    detected_task = task
+    if task == "auto":
+        detected_task = _detect_task_from_target(y)
+
+    # Get X as scipy CSR (with numeric features hstacked)
+    X_sparse = sf.to_X_sparse(algorithm=algorithm)
+    feature_names = sf.feature_names_for_engine()
+
+    # Encode target (classification needs int labels)
+    from ._transforms import LabelEncoder
+    label_encoder = None
+    y_arr = y.values
+    if detected_task == "classification":
+        if pd.api.types.is_object_dtype(y) or pd.api.types.is_string_dtype(y):
+            label_encoder = LabelEncoder()
+            label_encoder.fit(y.dropna())
+            y_arr = label_encoder.transform(y)
+        else:
+            # Remap non-sequential int labels
+            unique_vals = sorted(y.dropna().unique())
+            n_unique = len(unique_vals)
+            if n_unique <= 30 and unique_vals != list(range(n_unique)):
+                label_encoder = LabelEncoder()
+                label_encoder.fit(y.dropna())
+                y_arr = label_encoder.transform(y)
+            else:
+                y_arr = y.values.astype(np.float64)
+    else:
+        y_arr = y.values.astype(np.float64)
+
+    # Balance
+    sample_weight = None
+    if balance:
+        if detected_task != "classification":
+            from ._types import ConfigError
+            raise ConfigError(
+                "balance=True only for classification."
+            )
+        kwargs, sample_weight = _prepare_balance(algorithm, y_arr, kwargs)
+
+    # Create engine — force sklearn for sparse (Rust/native do np.asarray)
+    sparse_engine = "sklearn" if engine in ("auto", "native", "ml") else engine
+    estimator = _engines.create(
+        algorithm, task=detected_task, seed=seed, gpu=gpu,
+        engine=sparse_engine, **kwargs,
+    )
+
+    # Fit — sparse-capable sklearn estimators accept CSR directly
+    fit_kwargs = {}
+    if sample_weight is not None:
+        fit_kwargs["sample_weight"] = sample_weight
+
+    t0 = time.perf_counter()
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=RuntimeWarning, module="sklearn")
+        estimator.fit(X_sparse, y_arr, **fit_kwargs)
+    fit_time = time.perf_counter() - t0
+
+    # Build a minimal NormState for predict-time sparse routing
+    from ._normalize import NormState
+    norm_state = NormState(
+        label_encoder=label_encoder,
+        category_maps={},
+        onehot_encoder=None,
+        onehot_columns=[],
+        imputer=None,
+        scaler=None,
+        feature_names=feature_names,
+        target_name=target,
+    )
+    # Tag as sparse-origin so predict knows to expect SparseFrame
+    norm_state._sparse_origin = True
+
+    _model = Model(
+        _model=estimator,
+        _task=detected_task,
+        _algorithm=algorithm,
+        _features=feature_names,
+        _target=target,
+        _seed=seed,
+        _label_encoder=label_encoder,
+        _feature_encoder=norm_state,
+        _preprocessor=None,
+        _n_train=len(sf),
+        _n_train_actual=None,
+        scores_=None,
+        _holdout_score=None,
+        _time=fit_time,
+        _balance=balance,
+        _sample_weight_col=weights,
+    )
+    # Mark model as sparse-trained for predict fast-path
+    _model._sparse = True
+    return _model
+
+
 def _fit_cv(
     cv: CVResult,
     target: str,
@@ -629,6 +810,7 @@ def _fit_cv(
     monotone: dict | None = None,
     gpu: bool | str = "auto",
     engine: str = "auto",
+    _knn_weights=None,
     **kwargs,
 ) -> Model:
     """Fit with cross-validation (per-fold normalization).
@@ -761,9 +943,6 @@ def _fit_cv(
     # Suppress per-fold scaling/imputation warnings (fire once, not N times)
     t0 = time.perf_counter()
     fold_metrics = []
-    # OOF prediction collectors
-    oof_preds_parts: list[pd.Series] = []
-    oof_proba_parts: list[tuple[np.ndarray, np.ndarray]] = []  # (indices, proba)
     _suppress_rt = resolved_algorithm in ("linear", "elastic_net", "logistic")
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message=".*Auto-scaling.*")
@@ -803,6 +982,8 @@ def _fit_cv(
 
             # Apply class balancing or user weights per fold
             fold_kwargs = dict(kwargs)
+            if _knn_weights is not None:
+                fold_kwargs["weights"] = _knn_weights
             fold_sw = fold_user_weights  # None unless weights= was specified
             if balance:
                 fold_kwargs, fold_sw = _prepare_balance(resolved_algorithm, y_train_clean, fold_kwargs)
@@ -871,11 +1052,6 @@ def _fit_cv(
             metrics = _compute_metrics(y_valid, y_pred_decoded, detected_task, estimator, X_valid_clean, proba=fold_proba)
             fold_metrics.append(metrics)
 
-            # Collect OOF predictions
-            oof_preds_parts.append(pd.Series(y_pred_decoded.values, index=fold_valid.index))
-            if fold_proba is not None:
-                oof_proba_parts.append((fold_valid.index.to_numpy(), fold_proba))
-
     # After all folds: refit on ALL data (warnings visible here — single fit)
     drop_cols_final = [target] + ([weights] if weights else [])
     X_all = data.drop(columns=drop_cols_final)
@@ -894,6 +1070,8 @@ def _fit_cv(
 
     # Apply class balancing or user weights for final refit
     final_kwargs = dict(kwargs)
+    if _knn_weights is not None:
+        final_kwargs["weights"] = _knn_weights
     final_sw = data[weights].values.astype(np.float64) if weights else None
     if balance:
         final_kwargs, final_sw = _prepare_balance(resolved_algorithm, y_all_clean, final_kwargs)
@@ -970,19 +1148,6 @@ def _fit_cv(
         scores_dict[f"{metric_name}_mean"] = float(np.mean(vals))
         scores_dict[f"{metric_name}_std"] = float(np.std(vals, ddof=1))
 
-    # Assemble OOF predictions
-    _cv_preds = None
-    _cv_proba = None
-    if oof_preds_parts:
-        _cv_preds = pd.concat(oof_preds_parts).sort_index()
-    if oof_proba_parts:
-        # Assemble full probability matrix ordered by original index
-        n_total = len(data)
-        n_classes = oof_proba_parts[0][1].shape[1]
-        _cv_proba = np.empty((n_total, n_classes), dtype=np.float64)
-        for indices, proba in oof_proba_parts:
-            _cv_proba[indices] = proba
-
     # Build Model with scores_ and per-fold metrics
     _model = Model(
         _model=final_engine,
@@ -1001,8 +1166,6 @@ def _fit_cv(
         _time=fit_time,
         _balance=balance,
         _sample_weight_col=weights,  # A12: store for reference
-        cv_predictions_=_cv_preds,
-        cv_probabilities_=_cv_proba if detected_task == "classification" else None,
     )
     # Layer 2: Store provenance for cross-verb checks
     from ._provenance import _fingerprint, audit_log, build_provenance
@@ -1471,7 +1634,7 @@ def _fit_seed_average(
         _algorithm=first._algorithm,
         _features=first._features,
         _target=target,
-        _seed=seed_list[0],  # amendment #17: seed returns seed_list[0]
+        _seed=seed_list[0],  # seed returns seed_list[0]
         _label_encoder=first._label_encoder,
         _feature_encoder=first._feature_encoder,
         _preprocessor=preprocessor,

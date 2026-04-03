@@ -156,7 +156,7 @@ def test_predict_classes_attribute(small_classification_data):
 
 
 def test_predict_augment_shape(small_regression_data):
-    """TTA predictions have same shape as non-augmented."""
+    """TTA predictions have same shape as non-augmented. Chain 5.2."""
     import warnings
     s = ml.split(data=small_regression_data, target="target", seed=42)
     with warnings.catch_warnings():
@@ -169,7 +169,7 @@ def test_predict_augment_shape(small_regression_data):
 
 
 def test_predict_augment_none_default(small_classification_data):
-    """Default (augment=None) is single-pass — identical to normal predict."""
+    """Default (augment=None) is single-pass — identical to normal predict. Chain 5.2."""
     import warnings
     s = ml.split(data=small_classification_data, target="target", seed=42)
     with warnings.catch_warnings():
@@ -181,7 +181,7 @@ def test_predict_augment_none_default(small_classification_data):
 
 
 def test_predict_augment_requires_seed(small_regression_data):
-    """predict() with augment= raises ConfigError when seed is missing."""
+    """predict() with augment= raises ConfigError when seed is missing. Chain 5.2."""
     import warnings
     s = ml.split(data=small_regression_data, target="target", seed=42)
     with warnings.catch_warnings():
@@ -192,7 +192,7 @@ def test_predict_augment_requires_seed(small_regression_data):
 
 
 def test_predict_augment_reduces_variance(small_regression_data):
-    """TTA with more passes has lower cross-run variance than single noisy pass."""
+    """TTA with more passes has lower cross-run variance than single noisy pass. Chain 5.2."""
     import warnings
     s = ml.split(data=small_regression_data, target="target", seed=42)
     with warnings.catch_warnings():
@@ -219,11 +219,11 @@ def test_predict_augment_reduces_variance(small_regression_data):
     )
 
 
-# ── Integration tests (TabPFN + TTA) ────────────────────────────
+# ── Chain 5.5: Integration tests (TabPFN + TTA) ────────────────────────────
 
 
 def test_tta_works_with_any_algorithm(small_classification_data):
-    """TTA integrates with any fitted model (not just TabPFN)."""
+    """TTA integrates with any fitted model (not just TabPFN). Chain 5.5."""
     import warnings
     s = ml.split(data=small_classification_data, target="target", seed=42)
     with warnings.catch_warnings():
@@ -240,7 +240,7 @@ def test_tta_works_with_any_algorithm(small_classification_data):
 
 
 def test_tta_proba_and_class_consistency(small_classification_data):
-    """TTA class predictions are consistent with argmax of TTA proba."""
+    """TTA class predictions are consistent with argmax of TTA proba. Chain 5.5."""
     import warnings
     s = ml.split(data=small_classification_data, target="target", seed=42)
     with warnings.catch_warnings():
@@ -262,7 +262,7 @@ def test_tta_proba_and_class_consistency(small_classification_data):
 
 
 # ---------------------------------------------------------------------------
-# Edge Cases(10.1: all-NaN column warnings)
+# Chain 10 — Edge Case Fortress (10.1: all-NaN column warnings)
 # ---------------------------------------------------------------------------
 
 def test_predict_all_nan_column_warns(small_classification_data):
@@ -305,11 +305,11 @@ def test_predict_empty_dataframe_raises(small_classification_data):
         model.predict(empty)
 
 
-# ── ml.predict_proba() module-level ──────────────────────────────────────────
+# ── ml.predict_proba() module-level ───────────────────────────────────────────
 
 
 def test_ml_predict_proba_callable(small_classification_data):
-    """ml.predict_proba() is importable and callable ."""
+    """ml.predict_proba() is importable and callable."""
     assert callable(ml.predict_proba)
     s = ml.split(data=small_classification_data, target="target", seed=42)
     model = ml.fit(data=s.train, target="target", seed=42)
@@ -331,9 +331,9 @@ def test_ml_predict_proba_matches_model_method(small_classification_data):
 # ── NaN passthrough for tree-based non-forest algorithms ──────────────────────
 
 
-@pytest.mark.parametrize("algorithm", ["extra_trees"])
+@pytest.mark.parametrize("algorithm", ["gradient_boosting", "extra_trees"])
 def test_nan_passthrough_tree_algos(algorithm):
-    """extra_trees passes NaN through without warning."""
+    """gradient_boosting and extra_trees pass NaN through without warning."""
     import warnings
 
     rng = np.random.RandomState(42)
@@ -353,23 +353,3 @@ def test_nan_passthrough_tree_algos(algorithm):
 
     nan_warnings = [w for w in caught if "NaN" in str(w.message) and "passed through" not in str(w.message)]
     assert len(nan_warnings) == 0, f"Unexpected NaN warning for {algorithm}: {[str(w.message) for w in nan_warnings]}"
-
-
-def test_nan_imputation_gradient_boosting():
-    """gradient_boosting auto-imputes NaN (sklearn GBT doesn't handle NaN natively)."""
-    import warnings
-
-    rng = np.random.RandomState(42)
-    data = pd.DataFrame({
-        "x1": rng.rand(200),
-        "x2": rng.rand(200),
-        "target": rng.choice([0, 1], 200),
-    })
-    data.loc[data.index[:20], "x1"] = float("nan")
-
-    s = ml.split(data=data, target="target", seed=42)
-    with warnings.catch_warnings(record=True):
-        warnings.simplefilter("always")
-        model = ml.fit(data=s.train, target="target", algorithm="gradient_boosting", seed=42)
-        preds = ml.predict(model, s.valid)
-    assert len(preds) == len(s.valid)

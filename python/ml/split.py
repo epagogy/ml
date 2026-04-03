@@ -20,7 +20,7 @@ from ._types import ConfigError, CVResult, DataError, SplitResult
 def _ml_shuffle(n: int, seed: int) -> np.ndarray:
     """Deterministic shuffle of [0, 1, ..., n-1].
 
-    Uses Rust PCG-XSH-RR when available (exact cross-language parity with R).
+    Uses Rust PCG-XSH-RR when available (exact cross-language parity with R/Julia).
     Falls back to numpy RandomState when Rust backend is not installed.
     """
     try:
@@ -43,7 +43,7 @@ def _ml_shuffle(n: int, seed: int) -> np.ndarray:
 def _ml_partition_sizes(n: int, ratio: tuple) -> tuple[int, int, int]:
     """Canonical partition sizes: (n_train, n_valid, n_test).
 
-    Uses round(n * ratio) — identical formula across Python and R.
+    Uses round(n * ratio) — identical formula across Python, R, Julia.
     """
     try:
         import ml_py
@@ -319,7 +319,7 @@ def split(
 
     .. note:: **Cross-language reproducibility**
        When the Rust backend (ml-py) is installed, the same seed produces
-       identical non-stratified splits across Python and R (PCG-XSH-RR
+       identical non-stratified splits across Python, R, and Julia (PCG-XSH-RR
        deterministic RNG). Stratified splits use per-language RNG and may differ.
        Without the Rust backend, falls back to numpy — same correctness,
        different permutation.
@@ -570,7 +570,7 @@ def _split_three_way(
 
         if do_stratify:
             # Stratified: single-pass per-class Rust PCG shuffle
-            # (cross-language parity with R)
+            # (cross-language parity with R/Julia)
             y_arr = np.asarray(data[target])
             classes = np.sort(np.unique(y_arr))
             train_parts, valid_parts, test_parts = [], [], []
@@ -665,9 +665,6 @@ def _split_three_way(
         train_out.attrs["_ml_partition"] = "train"
         valid_out.attrs["_ml_partition"] = "valid"
         test_out.attrs["_ml_partition"] = "test"
-        train_out.attrs["_ml_target"] = target
-        valid_out.attrs["_ml_target"] = target
-        test_out.attrs["_ml_target"] = target
 
         # Layer 1: Register partitions in provenance registry
         from ._provenance import (
@@ -692,7 +689,7 @@ def _split_three_way(
             _seed=seed,
         )
         # Store receipt in registry for build_provenance() to find
-        _registry.register_split(sid)
+        _registry.register_split(sid, target=target)
         return result
 
     else:  # Two-way split
@@ -737,9 +734,6 @@ def _split_three_way(
         train_out.attrs["_ml_partition"] = "train"
         empty_valid.attrs["_ml_partition"] = "valid"
         test_out.attrs["_ml_partition"] = "test"
-        train_out.attrs["_ml_target"] = target
-        empty_valid.attrs["_ml_target"] = target
-        test_out.attrs["_ml_target"] = target
 
         # Layer 1: Register partitions in provenance registry
         from ._provenance import (
@@ -762,7 +756,7 @@ def _split_three_way(
             _task=detected_task,
             _seed=seed,
         )
-        _registry.register_split(sid)
+        _registry.register_split(sid, target=target)
         return result
 
 
@@ -814,7 +808,7 @@ def _split_temporal(
         train_frac = ratio[0]
         valid_frac = 1.0 - ratio[0]
 
-    # Canonical partition sizes — same formula across Python and R.
+    # Canonical partition sizes — same formula across Python, R, Julia.
     n_train, n_valid, _ = _ml_partition_sizes(n, (train_frac, valid_frac, 1.0 - train_frac - valid_frac))
     train_end = n_train
     valid_end = n_train + n_valid
@@ -844,9 +838,6 @@ def _split_temporal(
     train.attrs["_ml_partition"] = "train"
     valid.attrs["_ml_partition"] = "valid"
     test.attrs["_ml_partition"] = "test"
-    train.attrs["_ml_target"] = target
-    valid.attrs["_ml_target"] = target
-    test.attrs["_ml_target"] = target
 
     # Layer 1: Register partitions in provenance registry
     from ._provenance import _fingerprint, _registry, audit_log, new_split_id, register_partition
@@ -1139,9 +1130,6 @@ def _split_group_holdout(
     train_out.attrs["_ml_partition"] = "train"
     valid_out.attrs["_ml_partition"] = "valid"
     test_out.attrs["_ml_partition"] = "test"
-    train_out.attrs["_ml_target"] = target
-    valid_out.attrs["_ml_target"] = target
-    test_out.attrs["_ml_target"] = target
 
     # Layer 1: Register partitions in provenance registry
     from ._provenance import _fingerprint, _registry, audit_log, new_split_id, register_partition

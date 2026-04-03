@@ -16,7 +16,60 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
 import pandas as pd
+
+try:
+    from ml_py import fit_tfidf_vocabulary as _rust_fit_vocab
+    from ml_py import fit_transform_tfidf_sparse as _rust_fit_transform
+    from ml_py import fit_transform_tfidf_strings as _rust_fit_transform_strings
+
+    _HAS_RUST_FIT = True
+except ImportError:
+    _rust_fit_vocab = None  # type: ignore[assignment]
+    _rust_fit_transform = None  # type: ignore[assignment]
+    _rust_fit_transform_strings = None  # type: ignore[assignment]
+    _HAS_RUST_FIT = False
+
+
+def _encode_docs(texts) -> tuple[bytes, np.ndarray]:
+    """Encode text series to contiguous byte buffer + offsets for Rust.
+
+    Optimized: single pass with cumsum for offsets, avoids Python loop.
+    """
+    docs = list(texts)
+    # Fast encode — list comp is faster than generator for CPython
+    encoded = [d.encode("utf-8") if isinstance(d, str) else d for d in docs]
+    # Vectorized offsets via numpy cumsum (avoids Python for-loop)
+    lengths = np.fromiter((len(e) for e in encoded), dtype=np.int64, count=len(encoded))
+    offsets = np.empty(len(encoded) + 1, dtype=np.int64)
+    offsets[0] = 0
+    np.cumsum(lengths, out=offsets[1:])
+    return b"".join(encoded), offsets
+
+
+class _RustVectorizer:
+    """Lightweight duck-type for sklearn/native TfidfVectorizer.
+
+    Stores vocab dict + IDF array from Rust fit. Provides the same
+    `.vocabulary_`, `.idf_`, `.lowercase` interface that sparse.py expects.
+    No transform method — sparse.py handles transform via Rust backend.
+    """
+
+    __slots__ = ("vocabulary_", "idf_", "lowercase")
+
+    def __init__(self, vocabulary: dict, idf: np.ndarray, lowercase: bool = True):
+        self.vocabulary_ = vocabulary
+        self.idf_ = idf
+        self.lowercase = lowercase
+
+    def transform(self, texts) -> np.ndarray:
+        """Dense transform fallback for Tokenizer.transform() path."""
+
+        from .sparse import _transform_sparse
+
+        mat = _transform_sparse(self, texts)
+        return mat.toarray()
 
 
 @dataclass
@@ -209,8 +262,18 @@ def tokenize(
     vectorizers: dict[str, Any] = {}
     for col in columns:
         texts = data[col].fillna("").astype(str)
-        vec = TfidfVectorizer(max_features=max_features, lowercase=True)
-        vec.fit(texts)
+
+        if _HAS_RUST_FIT:
+            # Rust fast path: parallel vocab fit via rayon
+            text_bytes, offsets = _encode_docs(texts)
+            vocab_dict, idf_arr = _rust_fit_vocab(
+                text_bytes, offsets, max_features, True
+            )
+            vec = _RustVectorizer(vocab_dict, idf_arr, lowercase=True)
+        else:
+            vec = TfidfVectorizer(max_features=max_features, lowercase=True)
+            vec.fit(texts)
+
         vectorizers[col] = vec
 
     return Tokenizer(
@@ -218,3 +281,95 @@ def tokenize(
         max_features=max_features,
         _vectorizers=vectorizers,
     )
+
+
+def tokenize_sparse(
+    data: pd.DataFrame,
+    *,
+    columns: list[str],
+    max_features: int = 100,
+    target: str | None = None,
+) -> tuple[Any, Any]:
+    """Fused tokenize + sparse in one call.
+
+    When Rust backend is available, fits vocabulary and transforms to sparse
+    TF-IDF in a single Rust call — avoids encoding text twice and eliminates
+    one Python↔Rust boundary crossing.
+
+    Returns (Tokenizer, SparseFrame) — equivalent to:
+        tok = ml.tokenize(data, columns=columns, max_features=max_features)
+        sf = ml.sparse(tok, data, target=target)
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Training DataFrame with text columns.
+    columns : list[str]
+        Text column names.
+    max_features : int
+        Max TF-IDF vocabulary size per column.
+    target : str, optional
+        Target column name.
+
+    Returns
+    -------
+    tuple[Tokenizer, SparseFrame]
+    """
+    from .sparse import SparseFrame
+
+    try:
+        import scipy.sparse as sp_mod
+    except ImportError:
+        # Fall back to separate calls
+        tok = tokenize(data, columns=columns, max_features=max_features)
+        from .sparse import sparse as sparse_fn
+        sf = sparse_fn(tok, data, target=target)
+        return tok, sf
+
+    if not _HAS_RUST_FIT or len(columns) != 1:
+        # Multi-column or no Rust — fall back to separate calls
+        tok = tokenize(data, columns=columns, max_features=max_features)
+        from .sparse import sparse as sparse_fn
+        sf = sparse_fn(tok, data, target=target)
+        return tok, sf
+
+    # --- Fused Rust path: list[str] directly, no Python encode ---
+    col = columns[0]
+    texts = data[col].fillna("").astype(str)
+    docs = list(texts)
+
+    indices, indptr, values, n_cols, vocab_dict, idf_arr = _rust_fit_transform_strings(
+        docs, max_features, True
+    )
+
+    vec = _RustVectorizer(vocab_dict, idf_arr, lowercase=True)
+    tok = Tokenizer(
+        columns=list(columns),
+        max_features=max_features,
+        _vectorizers={col: vec},
+    )
+
+    sparse_matrix = sp_mod.csr_matrix(
+        (values, indices, indptr), shape=(len(data), n_cols)
+    )
+    n_features = sparse_matrix.shape[1]
+    feat_names = [f"{col}_tfidf_{i}" for i in range(n_features)]
+
+    # Separate numeric columns
+    text_cols = set(columns)
+    exclude = text_cols | ({target} if target else set())
+    numeric_cols = [c for c in data.columns if c not in exclude]
+    numeric_df = data[numeric_cols].copy() if numeric_cols else pd.DataFrame(index=data.index)
+    if target and target in data.columns:
+        numeric_df[target] = data[target]
+
+    sf = SparseFrame(
+        data=sparse_matrix,
+        feature_names=feat_names,
+        numeric=numeric_df,
+        target=target,
+        index=data.index,
+        attrs=dict(data.attrs) if data.attrs else {},
+    )
+
+    return tok, sf

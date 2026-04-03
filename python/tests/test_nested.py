@@ -1,4 +1,4 @@
-"""Tests for ml.nested_cv() — nested cross-validation."""
+"""Tests for ml.nested_cv() — nested cross-validation. Chain 2.4."""
 
 import numpy as np
 import pandas as pd
@@ -20,7 +20,7 @@ def clf_data():
 
 
 def test_nested_cv_basic(clf_data):
-    """nested_cv() runs without error and returns NestedCVResult."""
+    """nested_cv() runs without error and returns NestedCVResult. Chain 2.4."""
     result = ml.nested_cv(
         clf_data, "target",
         algorithms=["logistic"],
@@ -35,7 +35,7 @@ def test_nested_cv_basic(clf_data):
 
 
 def test_nested_cv_generalization_gap(clf_data):
-    """Generalization gap (inner - outer) is finite and reasonable."""
+    """Generalization gap (inner - outer) is finite and reasonable. Chain 2.4."""
     result = ml.nested_cv(
         clf_data, "target",
         algorithms=["logistic"],
@@ -50,7 +50,7 @@ def test_nested_cv_generalization_gap(clf_data):
 
 
 def test_nested_cv_best_algorithm(clf_data):
-    """best_algorithm matches the algorithm with the best mean outer score."""
+    """best_algorithm matches the algorithm with the best mean outer score. Chain 2.4."""
     result = ml.nested_cv(
         clf_data, "target",
         algorithms=["logistic", "random_forest"],

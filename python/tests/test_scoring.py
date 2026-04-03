@@ -87,7 +87,7 @@ def test_scorer_greater_is_better():
         assert callable(scorer)
 
 
-# ── Competition metrics ────────────────────────────────────────────
+# ── Chain 2.1: Competition metrics ────────────────────────────────────────────
 
 
 def test_scorer_qwk_ordinal():

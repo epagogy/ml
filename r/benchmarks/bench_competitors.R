@@ -7,7 +7,7 @@
 # Usage:
 #   Rscript benchmarks/bench_competitors.R                    # tiny+small
 #   Rscript benchmarks/bench_competitors.R --medium           # +100K
-#   Rscript benchmarks/bench_competitors.R --server            # +1M
+#   Rscript benchmarks/bench_competitors.R --large            # +1M
 #   Rscript benchmarks/bench_competitors.R --json --output competitors.json
 
 suppressPackageStartupMessages({
@@ -348,7 +348,7 @@ output_file <- NULL
 i <- 1L
 while (i <= length(args)) {
   if (args[i] == "--medium") sizes <- c(sizes, "medium")
-  else if (args[i] == "--server") sizes <- c(sizes, "medium", "large")
+  else if (args[i] == "--large") sizes <- c(sizes, "medium", "large")
   else if (args[i] == "--json") json_only <- TRUE
   else if (args[i] == "--output" && i < length(args)) { i <- i + 1L; output_file <- args[i] }
   i <- i + 1L

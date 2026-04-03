@@ -22,6 +22,7 @@ import time
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass
+from pathlib import Path
 
 import pandas as pd
 
@@ -30,7 +31,11 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 
 _MAX_REGISTRY_ENTRIES = 10_000
-_SAMPLE_ROWS = 2000
+
+# Breadcrumb directory for cross-session assess-once durability.
+# Content-addressed filenames: one empty file per assessed fingerprint.
+# `rm -rf .ml_assessed` is the explicit, visible, auditable reset.
+_BREADCRUMB_DIR = Path(".ml_assessed")
 
 
 def _fingerprint(df: pd.DataFrame) -> str:
@@ -39,44 +44,45 @@ def _fingerprint(df: pd.DataFrame) -> str:
     Uses pd.util.hash_pandas_object on cell values (index=False for
     index-agnosticism), plus column names as part of the hash. This
     ensures: (1) same content = same fingerprint regardless of index,
-    (2) column renames produce different fingerprints, (3) strided
-    sampling for large datasets (>100K rows).
+    (2) column renames produce different fingerprints, (3) exact hashing
+    for large datasets (no sampling — SHA-256 handles 8MB in ~10ms).
 
-    Returns a hex string (first 16 chars of SHA-256), or None if
-    unhashable (e.g., list-valued columns) or not a DataFrame.
+    Never returns None. Falls back to CSV serialization for unhashable
+    column types (lists, dicts). Note: .values.tobytes() on object arrays
+    dumps pointer addresses, not content — to_csv() is the correct fallback.
+    The guard degrades in speed, not coverage.
     """
-    if not isinstance(df, pd.DataFrame):
-        return None
     n = len(df)
+    # Column names are part of identity — renaming = different data
+    # Length-prefix each name to avoid injection (e.g. "a\x00b"+"c" vs "a"+"b\x00c")
+    col_sig = b"".join(
+        len(s).to_bytes(4, "big") + s
+        for c in df.columns
+        for s in [str(c).encode()]
+    )
+
     if n == 0:
-        col_sig = b"".join(
-            len(s).to_bytes(4, "big") + s
-            for c in df.columns
-            for s in [str(c).encode()]
-        )
         return hashlib.sha256(b"empty" + col_sig).hexdigest()[:16]
 
     try:
-        # Column names are part of identity — renaming = different data
-        # Length-prefix each name to avoid injection (e.g. "a\x00b"+"c" vs "a"+"b\x00c")
-        col_sig = b"".join(
-            len(s).to_bytes(4, "big") + s
-            for c in df.columns
-            for s in [str(c).encode()]
-        )
         if n > 100_000:
-            stride = max(1, n // _SAMPLE_ROWS)
-            sample = df.iloc[::stride]
-            row_hashes = pd.util.hash_pandas_object(sample, index=False)
-            payload = row_hashes.values.tobytes() + col_sig + f"|{df.shape}".encode()
+            # Raw buffer hash — O(n) but C-level memcpy, no Python iteration.
+            # 100K × 10 float64 = 8MB → SHA-256 in ~10ms. No sampling = no collision.
+            try:
+                payload = df.values.tobytes() + col_sig + f"|{df.shape}".encode()
+            except (ValueError, TypeError):
+                # Mixed dtypes → object array can't tobytes; fall back to CSV
+                payload = df.to_csv(index=False).encode() + col_sig + f"|{df.shape}".encode()
         else:
             row_hashes = pd.util.hash_pandas_object(df, index=False)
             payload = row_hashes.values.tobytes() + col_sig
-
-        return hashlib.sha256(payload).hexdigest()[:16]
     except TypeError:
-        # Unhashable column types (e.g., list-valued columns) — can't fingerprint
-        return None
+        # Unhashable cells (lists, dicts) — fall back to CSV serialization.
+        # to_csv() never fails and is deterministic. .values.tobytes() on object
+        # arrays dumps raw pointer addresses, NOT content — non-deterministic.
+        payload = df.to_csv(index=False).encode() + col_sig
+
+    return hashlib.sha256(payload).hexdigest()[:16]
 
 
 class PartitionRegistry:
@@ -91,13 +97,12 @@ class PartitionRegistry:
         self._store: OrderedDict[str, str] = OrderedDict()      # fp → role
         self._lineage: dict[str, str] = {}                       # fp → split_id
         self._splits: dict[str, dict] = {}                       # split_id → metadata
-        self._assessed: set[str] = set()                         # fp → assessed test partitions
+        self._assessed: set[str] = set()                         # fps of assessed test partitions
+        self._eval_counts: dict[str, int] = {}                   # fp → K (evaluate calls on this partition)
 
-    def register(self, df: pd.DataFrame, role: str, split_id: str) -> str | None:
-        """Register a partition. Returns its fingerprint, or None if unhashable."""
+    def register(self, df: pd.DataFrame, role: str, split_id: str) -> str:
+        """Register a partition. Returns its fingerprint."""
         fp = _fingerprint(df)
-        if fp is None:
-            return None
         with self._lock:
             self._store[fp] = role
             self._lineage[fp] = split_id
@@ -110,16 +115,20 @@ class PartitionRegistry:
     def identify(self, df: pd.DataFrame) -> str | None:
         """Identify the partition role of a DataFrame, or None if unknown."""
         fp = _fingerprint(df)
-        if fp is None:
-            return None
         return self._store.get(fp)
 
     def get_split_id(self, df: pd.DataFrame) -> str | None:
         """Get the split_id that produced this partition, or None."""
         fp = _fingerprint(df)
-        if fp is None:
-            return None
         return self._lineage.get(fp)
+
+    def get_target(self, df: pd.DataFrame) -> str | None:
+        """Look up the target column for a partition via its split provenance."""
+        split_id = self.get_split_id(df)
+        if split_id is None:
+            return None
+        meta = self._splits.get(split_id, {})
+        return meta.get("target")
 
     def register_split(self, split_id: str, **metadata):
         """Record metadata for a split operation."""
@@ -130,26 +139,102 @@ class PartitionRegistry:
             }
 
     def mark_assessed(self, df: pd.DataFrame) -> None:
-        """Mark a test partition's fingerprint as assessed (spent)."""
+        """Mark a test partition as assessed. Once marked, any future assess on
+        this partition (regardless of model) will be rejected by guard_assess."""
         fp = _fingerprint(df)
-        if fp is not None:
-            with self._lock:
-                self._assessed.add(fp)
+        with self._lock:
+            self._assessed.add(fp)
+            self._write_breadcrumb(fp)
+
+    def check_and_mark_assessed(self, df: pd.DataFrame) -> bool:
+        """Atomically check if partition is assessed, and mark it if not.
+
+        Returns True if this call successfully claimed the partition (first caller).
+        Returns False if already assessed (second caller loses).
+        Thread-safe: uses lock to prevent TOCTOU race between guard and mark.
+
+        Checks both in-memory set (fast path) and filesystem breadcrumbs
+        (cross-session durability). Breadcrumbs survive kernel restarts,
+        subprocess boundaries, and save/load cycles.
+        """
+        fp = _fingerprint(df)
+        with self._lock:
+            # Check memory first (fast path)
+            if fp in self._assessed:
+                return False
+            # Check filesystem (cross-session durability)
+            breadcrumb = _BREADCRUMB_DIR / fp
+            if breadcrumb.exists():
+                self._assessed.add(fp)  # warm the cache
+                return False
+            # First caller — claim it
+            self._assessed.add(fp)
+            self._write_breadcrumb(fp)
+            return True
 
     def is_assessed(self, df: pd.DataFrame) -> bool:
-        """Check if a test partition has already been assessed by any model."""
+        """Check whether a test partition has already been assessed."""
         fp = _fingerprint(df)
-        if fp is None:
-            return False
-        return fp in self._assessed
+        if fp in self._assessed:
+            return True
+        breadcrumb = _BREADCRUMB_DIR / fp
+        if breadcrumb.exists():
+            self._assessed.add(fp)
+            return True
+        return False
+
+    @staticmethod
+    def _write_breadcrumb(fp: str) -> None:
+        """Write a breadcrumb file for cross-session durability.
+
+        Silent on failure (read-only filesystem, permissions, etc.) —
+        in-memory guard still holds for the current session.
+        """
+        try:
+            _BREADCRUMB_DIR.mkdir(exist_ok=True)
+            (_BREADCRUMB_DIR / fp).touch()
+        except OSError:
+            pass  # best-effort — in-memory guard still active
+
+    def meter_evaluate(self, df: pd.DataFrame) -> int:
+        """Increment and return the evaluation count K for a partition.
+
+        Tracks how many times evaluate() has been called on this partition,
+        regardless of which model. K measures selection pressure.
+        """
+        fp = _fingerprint(df)
+        with self._lock:
+            self._eval_counts[fp] = self._eval_counts.get(fp, 0) + 1
+            return self._eval_counts[fp]
+
+    def get_eval_count(self, df: pd.DataFrame) -> int:
+        """Return the evaluation count K for a partition (0 if never evaluated)."""
+        fp = _fingerprint(df)
+        return self._eval_counts.get(fp, 0)
+
+    def get_eval_count_by_role(self, split_id: str, role: str) -> int:
+        """Return the evaluation count K for a partition identified by split_id and role.
+
+        Used by assess() to find K for the valid partition of the same split
+        as the test data being assessed.
+        """
+        for fp, sid in self._lineage.items():
+            if sid == split_id and self._store.get(fp) == role:
+                return self._eval_counts.get(fp, 0)
+        return 0
 
     def clear(self):
-        """Clear the registry (e.g., between experiments)."""
+        """Clear the in-memory registry (e.g., between experiments).
+
+        Filesystem breadcrumbs survive clear() intentionally.
+        Use `rm -rf .ml_assessed` for explicit cross-session reset.
+        """
         with self._lock:
             self._store.clear()
             self._lineage.clear()
             self._splits.clear()
             self._assessed.clear()
+            self._eval_counts.clear()
 
     def __len__(self):
         return len(self._store)
@@ -170,12 +255,12 @@ def register_partition(df: pd.DataFrame, role: str, split_id: str) -> str:
 
 
 def identify_partition(df: pd.DataFrame) -> str | None:
-    """Identify the partition role of a DataFrame, or None if unknown."""
+    """Identify the partition role of a DataFrame, or None if unregistered."""
     return _registry.identify(df)
 
 
 def get_split_id(df: pd.DataFrame) -> str | None:
-    """Get the split_id that produced this partition."""
+    """Get the split_id that produced this partition, or None if unregistered."""
     return _registry.get_split_id(df)
 
 
@@ -385,12 +470,10 @@ def _guard_action(message: str) -> None:
 def _identify_with_reason(data: pd.DataFrame) -> tuple[str | None, bool]:
     """Identify partition with fingerprintability info.
 
-    Returns (role, fingerprintable). role is None if unregistered or
-    unfingerprintable. fingerprintable is False for unhashable data.
+    Returns (role, fingerprintable). role is None if unregistered.
+    fingerprintable is always True (_fingerprint never returns None).
     """
     fp = _fingerprint(data)
-    if fp is None:
-        return None, False
     role = _registry._store.get(fp)
     return role, True
 
@@ -437,7 +520,7 @@ def guard_evaluate(data: pd.DataFrame) -> None:
 
 def guard_assess(data: pd.DataFrame) -> None:
     """Layer 1 guard for assess(): require split provenance, reject non-test data,
-    reject already-assessed test holdouts (per-holdout enforcement)."""
+    reject already-assessed test partitions (regardless of model)."""
     role, fingerprintable = _identify_with_reason(data)
     if not fingerprintable:
         return  # can't judge — pass silently
@@ -454,14 +537,33 @@ def guard_assess(data: pd.DataFrame) -> None:
             "assess() requires test data (s.test). "
             "For validation iterations, use ml.evaluate(model, s.valid)."
         )
-    elif _registry.is_assessed(data):
+    # Per-partition assessed check (conformance condition 4):
+    # "Reject a second assess call on the same test holdout set
+    #  regardless of which model."
+    # Uses atomic check-and-mark to prevent TOCTOU race between threads.
+    # Only check test-role partitions — non-test data was already rejected above.
+    if role == "test" and not _registry.check_and_mark_assessed(data):
         _guard_action(
-            "assess() called on a test holdout that has already been assessed. "
-            "The test set gets one assessment per holdout, regardless of which model. "
-            "Use ml.evaluate(model, s.valid) for model comparison. "
-            "To get a fresh holdout: s = ml.split(df, target, seed=NEW_SEED). "
-            "To override: ml.config(guards='off')"
+            "This test partition has already been assessed. "
+            "Each test holdout gets one assessment — regardless of which model. "
+            "Assessing multiple models on the same test set is model selection "
+            "on test data (Class II leakage, d_z = 0.93). "
+            "To compare models, use ml.evaluate(model, s.valid). "
+            "To get a fresh holdout, call ml.split() again."
         )
+
+
+def mark_partition_assessed(data: pd.DataFrame) -> None:
+    """Mark a test partition as assessed in the global registry.
+
+    Called by assess() after successful assessment. Once marked,
+    any future assess on this partition raises PartitionError
+    regardless of which model calls it.
+
+    Note: In strict mode, guard_assess() already marks atomically.
+    This function exists for warn/off modes where the guard doesn't raise.
+    """
+    _registry.mark_assessed(data)
 
 
 def guard_validate(data: pd.DataFrame) -> None:

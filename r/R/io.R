@@ -28,7 +28,7 @@ ml_save <- function(model, path) {
   if (!inherits(model, c("ml_model", "ml_tuning_result"))) {
     model_error("model must be an ml_model or ml_tuning_result")
   }
-  # Normalize path (warn on path traversal patterns)
+  # Normalize path (AUDIT C8: warn on path traversal patterns)
   path <- normalizePath(path, mustWork = FALSE)
   if (grepl("\\.\\.", path)) {
     cli::cli_warn("Path contains '..'. Verify this is intentional.")

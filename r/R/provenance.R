@@ -12,7 +12,6 @@
 .partition_registry$store   <- list()  # fingerprint → role
 .partition_registry$lineage <- list()  # fingerprint → split_id
 .partition_registry$receipts <- list()  # split_id → receipt hash
-.partition_registry$assessed <- character(0)  # fingerprints of assessed test partitions
 .partition_registry$max_entries <- 10000L
 
 #' @keywords internal
@@ -71,29 +70,11 @@
   )
 }
 
-#' Mark a test partition as assessed (per-holdout enforcement)
-#' @keywords internal
-.mark_assessed <- function(df) {
-  fp <- .fingerprint(df)
-  if (!fp %in% .partition_registry$assessed) {
-    .partition_registry$assessed <- c(.partition_registry$assessed, fp)
-  }
-  invisible(NULL)
-}
-
-#' Check if a test partition has already been assessed by any model
-#' @keywords internal
-.is_assessed <- function(df) {
-  fp <- .fingerprint(df)
-  fp %in% .partition_registry$assessed
-}
-
 #' @keywords internal
 .clear_registry <- function() {
   .partition_registry$store   <- list()
   .partition_registry$lineage <- list()
   .partition_registry$receipts <- list()
-  .partition_registry$assessed <- character(0)
   invisible(NULL)
 }
 

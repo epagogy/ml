@@ -1,4 +1,4 @@
-"""Tests for tune() time_budget parameter —"""
+"""Tests for tune() time_budget parameter — Chain 12."""
 
 import time
 import warnings

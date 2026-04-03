@@ -117,11 +117,10 @@ class TestSplitTemporalCV:
         assert isinstance(cv, ml.CVResult)
         assert cv.k == 3
 
-    def test_equivalent_to_split_time_cv_temporal(self, temporal_data):
-        s1 = ml.split_temporal(temporal_data, "target", time="date")
-        cv1 = ml.cv_temporal(s1, folds=5)
-        s2 = ml.split(temporal_data, "target", time="date")
-        cv2 = ml.cv_temporal(s2, folds=5)
+    def test_equivalent_to_split_time_folds(self, temporal_data):
+        s = ml.split_temporal(temporal_data, "target", time="date")
+        cv1 = ml.cv_temporal(s, folds=5)
+        cv2 = ml.cv_temporal(s, folds=5)
         assert cv1.k == cv2.k
 
 
@@ -146,13 +145,10 @@ class TestSplitTemporalErrors:
             ml.cv_temporal(s, folds=3, window="sliding")
 
     def test_embargo_without_folds(self, temporal_data):
-        """embargo= requires cv_temporal (folds), not holdout split."""
-        # embargo only makes sense with CV folds, so this is now
-        # tested via cv_temporal - just verify holdout split ignores it
+        # embargo is a cv_temporal parameter; folds < 2 raises ConfigError
         s = ml.split_temporal(temporal_data, "target", time="date")
-        # embargo on cv_temporal works fine
-        cv = ml.cv_temporal(s, folds=3, embargo=5)
-        assert cv.k == 3
+        with pytest.raises(ml.ConfigError, match="folds"):
+            ml.cv_temporal(s, folds=1, embargo=5)
 
     def test_invalid_window(self, temporal_data):
         s = ml.split_temporal(temporal_data, "target", time="date")
@@ -241,11 +237,10 @@ class TestSplitGroupCV:
             valid_groups = set(valid_df["patient_id"].unique())
             assert train_groups & valid_groups == set()
 
-    def test_equivalent_to_split_groups_cv_group(self, group_data):
-        s1 = ml.split_group(group_data, "outcome", groups="patient_id", seed=42)
-        cv1 = ml.cv_group(s1, folds=5, groups="patient_id", seed=42)
-        s2 = ml.split(group_data, "outcome", groups="patient_id", seed=42)
-        cv2 = ml.cv_group(s2, folds=5, groups="patient_id", seed=42)
+    def test_equivalent_to_split_groups_folds(self, group_data):
+        s = ml.split_group(group_data, "outcome", groups="patient_id", seed=42)
+        cv1 = ml.cv_group(s, folds=5, groups="patient_id", seed=42)
+        cv2 = ml.cv_group(s, folds=5, groups="patient_id", seed=42)
         assert cv1.k == cv2.k
 
 
@@ -285,18 +280,17 @@ class TestSplitGroupStratifyWarning:
                            seed=42, stratify=True)
 
     def test_no_warn_stratify_on_cv(self, group_data):
-        """stratify=True should NOT warn when using cv_group (it's supported)."""
+        """stratify=True should NOT warn when using cv_group() (it's supported)."""
         import warnings
-        # split_group holdout warns about stratify (expected), but cv_group should not
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            s = ml.split_group(group_data, "outcome", groups="patient_id", seed=42)
         with warnings.catch_warnings():
             warnings.simplefilter("error")
+            # This should not raise — stratify is supported for group CV
             try:
-                ml.cv_group(s, folds=4, groups="patient_id", seed=42)
+                s = ml.split_group(group_data, "outcome", groups="patient_id",
+                                   seed=42, stratify=False)
+                ml.cv_group(s, folds=4, groups="patient_id", seed=42, stratify=True)
             except UserWarning:
-                pytest.fail("cv_group should not warn about stratify")
+                pytest.fail("cv_group with stratify=True should not warn")
 
 
 class TestNoDoubleWarning:

@@ -106,56 +106,38 @@ class TestNullByteInjection:
 # An attacker can modify ONLY non-sampled rows and preserve the fingerprint.
 
 
-class TestStridedSamplingBypass:
-    """Modify only non-sampled rows to preserve fingerprint of large DataFrames."""
+class TestExactHashLargeDataFrames:
+    """Verify exact hashing for >100K row DataFrames (no sampling blind spots)."""
 
-    def test_modify_non_sampled_rows_preserves_fingerprint(self):
-        """BUG PROBE: for >100K rows, modifying only rows that fall between
-        the strided sample should not change the fingerprint. This is a
-        real blind spot — the guard cannot see these modifications."""
+    def test_single_row_modification_detected(self):
+        """Modifying a single row in a 110K DataFrame changes the fingerprint.
+        Previous strided sampling missed non-sampled rows — raw buffer hash doesn't."""
         n = 110_000
         np.random.seed(42)
         df = pd.DataFrame({"x": np.random.randn(n), "y": np.random.randn(n)})
         fp_original = _fingerprint(df)
 
-        # Compute which rows are sampled
-        stride = max(1, n // 2000)  # same logic as _fingerprint
-        sampled_indices = set(range(0, n, stride))
-
-        # Find a non-sampled row and modify it
         modified = df.copy()
-        for idx in range(n):
-            if idx not in sampled_indices:
-                modified.iloc[idx, 0] = 999999.0  # drastically different value
-                break
-
+        modified.iloc[50_001, 0] = 999999.0  # single arbitrary row
         fp_modified = _fingerprint(modified)
-        # KNOWN DESIGN TRADEOFF: strided sampling for >100K rows means
-        # non-sampled rows are invisible. This is accepted for performance.
-        assert fp_original == fp_modified, (
-            "Strided sampling should NOT detect non-sampled row changes"
+
+        assert fp_original != fp_modified, (
+            "Raw buffer hash should detect single-row modifications"
         )
 
-    def test_modify_many_non_sampled_rows(self):
-        """BUG PROBE: modify ALL non-sampled rows. If fingerprint is unchanged,
-        the guard is nearly useless for large DataFrames."""
+    def test_bulk_modification_detected(self):
+        """Modifying many rows in a 110K DataFrame changes the fingerprint."""
         n = 110_000
         np.random.seed(42)
         df = pd.DataFrame({"x": np.random.randn(n)})
         fp_original = _fingerprint(df)
 
-        stride = max(1, n // 2000)
-        sampled_indices = set(range(0, n, stride))
-
         modified = df.copy()
-        for idx in range(n):
-            if idx not in sampled_indices:
-                modified.iloc[idx, 0] = 0.0  # zero out all unsampled rows
-
+        modified.iloc[::2, 0] = 0.0  # zero out every other row
         fp_modified = _fingerprint(modified)
-        # KNOWN DESIGN TRADEOFF: same as above — strided sampling accepted.
-        assert fp_original == fp_modified, (
-            "Strided sampling should NOT detect non-sampled row changes"
+
+        assert fp_original != fp_modified, (
+            "Raw buffer hash should detect bulk modifications"
         )
 
 
@@ -337,7 +319,7 @@ class TestTimezoneDatetime:
 
 
 # ---------------------------------------------------------------------------
-# ATTACK: Registry lineage memory leak
+# ATTACK A7: Registry lineage memory leak
 # ---------------------------------------------------------------------------
 # _store uses OrderedDict with eviction at _MAX_REGISTRY_ENTRIES.
 # But _lineage is a plain dict with NO eviction. It grows without bound.

@@ -258,7 +258,6 @@ def stack(
 
     # A5: Build OOF column names upfront.
     # Duplicate algorithm names use {algo}_{i}_oof to distinguish them.
-    # (amendment #16)
     from collections import Counter
     algo_counts = Counter(models)
     algo_seen: Counter = Counter()

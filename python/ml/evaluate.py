@@ -69,6 +69,22 @@ def evaluate(
     from ._types import ConfigError, DataError, Metrics, TuningResult
     from ._types import Model as ModelType
 
+    # Accept SparseFrame — convert to dense for evaluation pipeline
+    from .sparse import SparseFrame
+    if isinstance(data, SparseFrame):
+        # Partition guard must run before to_dense() (fingerprint changes)
+        if _guard and data.attrs.get("_ml_partition"):
+            partition = data.attrs["_ml_partition"]
+            if partition == "test":
+                from ._types import PartitionError
+                raise PartitionError(
+                    "evaluate() received data identified as 'test' partition. "
+                    "evaluate() is the practice exam — use validation data. "
+                    "For the final exam, use ml.assess(model, test=s.test)."
+                )
+            _guard = False  # already validated — skip fingerprint guard below
+        data = data.to_dense()
+
     # Auto-convert Polars/other DataFrames to pandas
     data = to_pandas(data)
 
@@ -107,6 +123,13 @@ def evaluate(
         model._workflow_state = check_workflow_transition(
             model._workflow_state, "evaluate"
         )
+
+    # Meter: count validation evaluations (selection pressure K)
+    # K is per-partition, not per-model: tracks how many times this
+    # validation partition has been evaluated, regardless of model.
+    if _guard:  # only count user-facing calls, not internal (assess, compare)
+        from ._provenance import _registry
+        _registry.meter_evaluate(data)
 
     # Unwrap TuningResult → Model
     if isinstance(model, TuningResult):

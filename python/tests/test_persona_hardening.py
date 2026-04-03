@@ -1,4 +1,5 @@
-"""Tests for persona hardening
+"""Tests for persona hardening — Chain 15.
+
 Pre-empts known practitioner pain points: dtype consistency, TuningResult unwrap,
 tune patience, save/load complex models, screen tie-breaking, profile sampling.
 """

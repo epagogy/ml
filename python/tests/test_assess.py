@@ -185,3 +185,106 @@ def test_assess_rejects_untagged_data(small_classification_data):
             ml.assess(model=model, test=untagged)
     finally:
         ml.config(guards="off")
+
+
+# ── K metering (validation selection pressure) ───────────────────────────────
+
+
+def test_assess_K_tracks_validation_evaluations(small_classification_data):
+    """Evidence._K counts evaluate() calls on the valid partition, not the model."""
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+
+    # Two different models evaluate on same s.valid → K=2
+    m1 = ml.fit(data=s.train, target="target", algorithm="logistic", seed=42)
+    m2 = ml.fit(data=s.train, target="target", algorithm="random_forest", seed=42)
+    ml.evaluate(m1, s.valid)
+    ml.evaluate(m2, s.valid)
+
+    final = ml.fit(data=s.dev, target="target", seed=42)
+    evidence = ml.assess(final, test=s.test)
+
+    assert isinstance(evidence, ml.Evidence)
+    assert evidence._K == 2
+
+
+def test_assess_K_zero_without_evaluate(small_classification_data):
+    """Evidence._K is 0 when no evaluate() was called."""
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+    model = ml.fit(data=s.dev, target="target", seed=42)
+    evidence = ml.assess(model, test=s.test)
+
+    assert evidence._K == 0
+
+
+def test_assess_K_ignores_train_evaluations(small_classification_data):
+    """Evaluating on s.train does not inflate K for the valid partition."""
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+    model = ml.fit(data=s.train, target="target", seed=42)
+
+    # Evaluate on train (overfitting diagnostic) — should NOT count as K
+    ml.evaluate(model, s.train)
+    # Evaluate on valid — this is K=1
+    ml.evaluate(model, s.valid)
+
+    final = ml.fit(data=s.dev, target="target", seed=42)
+    evidence = ml.assess(final, test=s.test)
+
+    assert evidence._K == 1
+
+
+def test_assess_K_per_partition_not_per_model(small_classification_data):
+    """K tracks the partition, not the model. Same valid, 3 models → K=3."""
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+
+    for algo in ["logistic", "random_forest", "naive_bayes"]:
+        m = ml.fit(data=s.train, target="target", algorithm=algo, seed=42)
+        ml.evaluate(m, s.valid)
+
+    final = ml.fit(data=s.dev, target="target", seed=42)
+    evidence = ml.assess(final, test=s.test)
+
+    assert evidence._K == 3
+
+
+def test_assess_K_different_splits_independent(small_classification_data):
+    """K from one split does not leak into Evidence from a different split."""
+    # Split 1: evaluate twice
+    s1 = ml.split(data=small_classification_data, target="target", seed=42)
+    m1 = ml.fit(data=s1.train, target="target", seed=42)
+    ml.evaluate(m1, s1.valid)
+    ml.evaluate(m1, s1.valid)
+
+    # Split 2: no evaluations
+    s2 = ml.split(data=small_classification_data, target="target", seed=99)
+    m2 = ml.fit(data=s2.dev, target="target", seed=99)
+    evidence = ml.assess(m2, test=s2.test)
+
+    assert evidence._K == 0
+
+
+def test_evidence_str_shows_K(small_classification_data):
+    """Evidence.__str__ includes K when K > 0."""
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+    model = ml.fit(data=s.train, target="target", seed=42)
+    ml.evaluate(model, s.valid)
+
+    final = ml.fit(data=s.dev, target="target", seed=42)
+    evidence = ml.assess(final, test=s.test)
+
+    assert "K=1" in str(evidence)
+
+
+def test_assess_internal_callers_dont_inflate_K(small_classification_data):
+    """Internal evaluate calls (from compare, validate) should NOT inflate K.
+    Only user-facing evaluate() calls count."""
+    s = ml.split(data=small_classification_data, target="target", seed=42)
+    m1 = ml.fit(data=s.train, target="target", algorithm="logistic", seed=42)
+    m2 = ml.fit(data=s.train, target="target", algorithm="random_forest", seed=42)
+
+    # compare() calls evaluate internally with _guard=False
+    ml.compare([m1, m2], s.valid)
+
+    # No user-facing evaluate() was called → K should be 0
+    final = ml.fit(data=s.dev, target="target", seed=42)
+    evidence = ml.assess(final, test=s.test)
+    assert evidence._K == 0

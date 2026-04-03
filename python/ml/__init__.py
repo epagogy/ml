@@ -1,12 +1,14 @@
 """ml - ML that works. Simple, lovable, complete.
 
-42 verbs + 3 data helpers:
-    Core:     split, split_temporal, split_group, fit, predict, evaluate, assess, explain, save, load
+55 verbs + 3 data helpers:
+    Core:     split, split_temporal, split_group, fit, predict, predict_proba, evaluate, assess, explain, save, load
     Screen:   screen, compare, tune, stack, validate, profile
-    Monitor:  drift, shelf, calibrate
-    Preproc:  tokenize, scale, encode, impute, pipe, discretize, null_flags
+    CV:       cv, cv_temporal, cv_group, nested_cv
+    Monitor:  drift, shelf, calibrate, verify, audit
+    Preproc:  tokenize, tokenize_sparse, scale, encode, impute, pipe, discretize, null_flags, deflate, sparse
     Analysis: interact, enough, leak, blend, cluster_features, select, optimize,
-              nested_cv, plot, report, check, check_data
+              plot, report, check, check_data
+    Utility:  config, help, quick, quiet, verbose
     Data:     dataset, datasets, algorithms
 
 Import and use:
@@ -21,7 +23,7 @@ Import and use:
     >>> verdict = ml.assess(final, test=s.test)       # one-time final exam
 """
 
-__version__ = "1.1.2"
+__version__ = "1.2.0"
 
 # Core workflow functions
 from .split import split, split_temporal, split_group
@@ -36,11 +38,12 @@ from .profile import profile
 from .screen import screen
 from .predict import predict, predict_proba
 from .compare import compare
+from .deflate import deflate
 from .tune import tune
 from .stack import stack
 from .validate import validate, ValidateResult
 from .calibrate import calibrate
-from .tokenize import tokenize, Tokenizer
+from .tokenize import tokenize, tokenize_sparse, Tokenizer
 from .scale import scale, Scaler
 from .encode import encode, Encoder
 from .impute import impute, Imputer
@@ -60,17 +63,18 @@ from .select import select
 from ._config import config
 from ._help import help
 from ._provenance import audit  # noqa: F401
+from .verify import verify
+from .sparse import sparse, SparseFrame
 
-# Held back for v1.1 — internal only
-# embed/Embedder not exported: use ml._embed or import from ml.embed directly
+# embed: internal only — use `from ml.embed import embed` if needed
 from .leak import leak  # noqa: F401
 from .check import check_data, check, CheckReport, CheckResult
 from .report import report
 from .plot import plot
 
 # V2 stubs — wired but raise NotImplementedError
-from .update import update
-from .query import query
+from .update import update  # noqa: F401
+from .query import query  # noqa: F401
 
 # Data structures
 from ._types import (
@@ -152,7 +156,7 @@ def verbose():
 __all__ = [
     # Version
     "__version__",
-    # Functions (40 verbs + 3 data helpers)
+    # Functions (55 verbs + 3 data helpers)
     "split",
     "split_temporal",
     "split_group",
@@ -169,6 +173,7 @@ __all__ = [
     "profile",
     "screen",
     "compare",
+    "deflate",
     "tune",
     "stack",
     "predict",
@@ -176,6 +181,7 @@ __all__ = [
     "validate",
     "calibrate",
     "tokenize",
+    "tokenize_sparse",
     "scale",
     "encode",
     "impute",
@@ -201,9 +207,12 @@ __all__ = [
     "CheckResult",
     "quiet",
     "verbose",
+    "cv",
+    "cv_temporal",
+    "cv_group",
+    "verify",
+    "audit",
     "report",
-    "update",
-    "query",
     # Data structures
     "Pipeline",
     "Tokenizer",
@@ -226,6 +235,7 @@ __all__ = [
     "TuningResult",
     "ValidateResult",
     # Display types
+    "Evidence",
     "Metrics",
     "ProfileResult",
     "Explanation",
@@ -239,4 +249,7 @@ __all__ = [
     "VersionError",
     "WorkflowState",
     "WorkflowStateError",
+    # Sparse
+    "sparse",
+    "SparseFrame",
 ]

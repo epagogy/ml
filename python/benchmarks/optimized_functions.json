@@ -5,7 +5,7 @@
     "cpu_count": 10,
     "ram_gb": 16.0,
     "python": "3.9.6",
-    "is_server": false
+    "is_large": false
   },
   "ml_version": "1.0.0",
   "benchmarks": {

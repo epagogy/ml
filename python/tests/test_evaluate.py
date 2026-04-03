@@ -171,11 +171,11 @@ def test_evaluate_tuning_result(small_classification_data):
     assert "accuracy" in metrics
 
 
-# ── Standard error ─────────────────────────────────────────────────
+# ── Chain 2.5: Standard error ─────────────────────────────────────────────────
 
 
 def test_evaluate_se_present(small_classification_data):
-    """evaluate(se=True) adds _se keys for each metric."""
+    """evaluate(se=True) adds _se keys for each metric. Chain 2.5."""
     s = ml.split(data=small_classification_data, target="target", seed=42)
     model = ml.fit(data=s.train, target="target", algorithm="logistic", seed=42)
     metrics = ml.evaluate(model=model, data=s.valid, se=True)
@@ -185,7 +185,7 @@ def test_evaluate_se_present(small_classification_data):
 
 
 def test_evaluate_se_reasonable(small_classification_data):
-    """SE values are smaller than the metric values themselves."""
+    """SE values are smaller than the metric values themselves. Chain 2.5."""
     s = ml.split(data=small_classification_data, target="target", seed=42)
     model = ml.fit(data=s.train, target="target", algorithm="logistic", seed=42)
     metrics = ml.evaluate(model=model, data=s.valid, se=True)
@@ -235,7 +235,7 @@ def test_evaluate_se_reproducible(small_classification_data):
 
 
 def test_evaluate_regression_se(small_regression_data):
-    """se=True works for regression tasks (previously only clf tested)."""
+    """se=True works for regression tasks."""
     s = ml.split(data=small_regression_data, target="target", seed=42)
     model = ml.fit(data=s.train, target="target", algorithm="linear", seed=42)
     metrics = ml.evaluate(model=model, data=s.valid, se=True)
@@ -343,8 +343,7 @@ def test_evaluate_silent_on_untagged_data(small_classification_data):
     s = ml.split(data=small_classification_data, target="target", seed=42)
     model = ml.fit(data=s.train, target="target", seed=42)
 
-    untagged = s.valid.copy()
-    untagged.attrs = {}
+    untagged = pd.DataFrame(s.valid.values, columns=s.valid.columns)
     assert "_ml_partition" not in untagged.attrs
 
     with warnings.catch_warnings(record=True) as w:
