@@ -29,7 +29,7 @@ def main():
     v2 = [json.loads(l) for l in open(HERE / "data/leakage_landscape_v2.jsonl")]
     v2_ok = v2  # V2 has no status field; all rows are usable
 
-    v3_an = [json.loads(l) for l in open(HERE / "data/v3/v3_an.jsonl")]
+    v3_an = [json.loads(l) for l in open(HERE / "data/v3_an.jsonl")]
     v3_an_ok = [r for r in v3_an if r.get("v3_status") == "ok"]
 
     passed = 0

@@ -10,7 +10,7 @@ v1_ok <- v1[v1$status == "ok", ]
 
 v2 <- stream_in(file("data/leakage_landscape_v2.jsonl"), verbose = FALSE)
 
-v3_an <- stream_in(file("data/v3/v3_an.jsonl"), verbose = FALSE)
+v3_an <- stream_in(file("data/v3_an.jsonl"), verbose = FALSE)
 v3_an_ok <- v3_an[v3_an$v3_status == "ok", ]
 
 dz <- function(x) {

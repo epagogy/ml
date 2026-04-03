@@ -52,9 +52,9 @@ def main():
     v1 = load_jsonl(RESULTS / "leakage_landscape_v1_final.jsonl")
     v1_ext = load_jsonl(RESULTS / "leakage_landscape_v1_extended.jsonl")
     v2 = load_jsonl(RESULTS / "leakage_landscape_v2.jsonl")
-    v3_an = load_jsonl(RESULTS / "v3" / "v3_an.jsonl")
-    v3_ap = load_jsonl(RESULTS / "v3" / "v3_ap.jsonl")
-    v3_ao = load_jsonl(RESULTS / "v3" / "v3_ao_merged.jsonl")
+    v3_an = load_jsonl(RESULTS / "v3_an.jsonl")
+    v3_ap = load_jsonl(RESULTS / "v3_ap.jsonl")
+    v3_ao = load_jsonl(RESULTS / "v3_ao_merged.jsonl")
     phase1 = json.loads((RESULTS / "phase1_results.json").read_text())
 
     # Filter to successful rows
@@ -388,7 +388,7 @@ def main():
     claims["cv_cov"] = cv_cov
 
     # Phase 2: 6-method CI comparison (Exp AO v2)
-    phase2_path = RESULTS / "v3" / "phase2_ao_v2.jsonl"
+    phase2_path = RESULTS / "phase2_ao_v2.jsonl"
     if phase2_path.exists():
         p2 = load_jsonl(phase2_path)
         ci_methods = {}

@@ -1,23 +1,11 @@
 FROM python:3.12-slim
 
-WORKDIR /paper
+WORKDIR /experiments
 
-RUN apt-get update && apt-get install -y --no-install-recommends fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
+COPY experiments/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY compile_claims.py figures.py claims.py ./
-COPY data/ data/
+COPY experiments/ .
 
-CMD ["sh", "-c", "\
-  echo '=== Compile claims ===' && \
-  python compile_claims.py && \
-  echo '' && \
-  echo '=== Generate figures ===' && \
-  mkdir -p figures && \
-  python figures.py && \
-  echo '' && \
-  echo 'All steps passed.' \
-"]
+# Re-run the full experiment suite (~4h on 8 cores, downloads from OpenML)
+CMD ["python", "run_v3_experiments.py"]

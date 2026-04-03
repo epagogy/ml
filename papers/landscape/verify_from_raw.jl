@@ -12,7 +12,7 @@ v1_ok = filter(r -> get(r, "status", nothing) == "ok", v1)
 
 v2 = readjsonl("data/leakage_landscape_v2.jsonl")
 
-v3_an = readjsonl("data/v3/v3_an.jsonl")
+v3_an = readjsonl("data/v3_an.jsonl")
 v3_an_ok = filter(r -> get(r, "v3_status", nothing) == "ok", v3_an)
 
 function dz(vals)
